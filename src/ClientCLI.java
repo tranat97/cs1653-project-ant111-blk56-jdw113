@@ -17,7 +17,7 @@ public class ClientCLI
 		login();
 		
 		String command;
-		System.out.print("Type help to get a list of commands");
+		System.out.println("Type help to get a list of commands\nType exit to quit");
 		do
 		{
 			System.out.print("\n> ");
@@ -86,7 +86,7 @@ public class ClientCLI
 		System.out.println("FileServer commands:");
 		System.out.println("\tlistfiles\n\tupload\n\tdownload\n\tdelete\n\t");
 		System.out.println("Other commands:");
-		System.out.println("\tchangeuser\n\thelp");
+		System.out.println("\tchangeuser\n\thelp\n\texit");
 	}
 
 	public static void createUser()
