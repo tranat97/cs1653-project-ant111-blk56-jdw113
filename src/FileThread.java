@@ -3,6 +3,7 @@
 import java.lang.Thread;
 import java.net.Socket;
 import java.util.List;
+import java.util.ArrayList;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -36,7 +37,18 @@ public class FileThread extends Thread
 				// Handler to list files that this user is allowed to see
 				if(e.getMessage().equals("LFILES"))
 				{
-				    /* TODO: Write this handler */
+					List<ShareFile> shareFiles = FileServer.fileList.getFiles();
+					Token t = (Token)e.getObjContents().get(0);
+					List<String> accessible = new ArrayList<String>();
+					for (ShareFile f : shareFiles)
+					{
+						if (t.getGroups().contains(f.getGroup())) {
+							accessible.add(f.getPath());
+						}
+					}
+					response = new Envelope("OK");
+					response.addObject(accessible);
+					output.writeObject(response);
 				}
 				if(e.getMessage().equals("UPLOADF"))
 				{
