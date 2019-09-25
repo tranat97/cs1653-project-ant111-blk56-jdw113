@@ -23,14 +23,7 @@ import java.util.*;
 		
 		public synchronized boolean checkUser(String username)
 		{
-			if(list.containsKey(username))
-			{
-				return true;
-			}
-			else
-			{
-				return false;
-			}
+			return list.containsKey(username);
 		}
 		
 		public synchronized ArrayList<String> getUserGroups(String username)
@@ -63,12 +56,21 @@ import java.util.*;
 			list.get(user).removeOwnership(groupname);
 		}
 		
+		public synchronized ArrayList<String> getMembers(String groupname)
+		{
+			ArrayList<String> members = new ArrayList<String>();
+			for (String user : list.keySet())
+			{
+				if (list.get(user).getGroups().contains(groupname))
+				{
+					members.add(user);
+				}
+			}
+			return members;
+		}
 	
 	class User implements java.io.Serializable {
 
-		/**
-		 * 
-		 */
 		private static final long serialVersionUID = -6699986336399821598L;
 		private ArrayList<String> groups;
 		private ArrayList<String> ownership;
@@ -96,12 +98,9 @@ import java.util.*;
 		
 		public void removeGroup(String group)
 		{
-			if(!groups.isEmpty())
+			if(!groups.isEmpty() && groups.contains(group))
 			{
-				if(groups.contains(group))
-				{
-					groups.remove(groups.indexOf(group));
-				}
+				groups.remove(groups.indexOf(group));
 			}
 		}
 		
@@ -112,15 +111,10 @@ import java.util.*;
 		
 		public void removeOwnership(String group)
 		{
-			if(!ownership.isEmpty())
+			if(!ownership.isEmpty() && ownership.contains(group))
 			{
-				if(ownership.contains(group))
-				{
-					ownership.remove(ownership.indexOf(group));
-				}
+				ownership.remove(ownership.indexOf(group));
 			}
 		}
-		
 	}
-	
 }	
