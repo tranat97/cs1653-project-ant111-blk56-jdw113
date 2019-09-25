@@ -10,11 +10,11 @@ public class ClientCLI
 
 	public static void main(String[] args)
 	{
-		connect("GroupServer", groupClient);
-		connect("FileServer", fileClient);
-//		groupClient.connect("localhost", 8765);
-//		fileClient.connect("localhost", 4321);
-		login();
+//		connect("GroupServer", groupClient);
+//		connect("FileServer", fileClient);
+		groupClient.connect("localhost", 8765);
+		fileClient.connect("localhost", 4321);
+		String username = login();
 		
 		String command;
 		System.out.println("Type help to get a list of commands\nType exit to quit");
@@ -24,7 +24,7 @@ public class ClientCLI
 			command = scan.nextLine().toLowerCase();
 
 			if (command.equals("help")) { printHelp(); }
-			else if (command.equals("changeuser")) { login(); }
+			else if (command.equals("changeuser")) { username = login(); }
 			else if (command.equals("createuser")) { createUser(); }
 			else if (command.equals("deleteuser")) { deleteUser(); }
 			else if (command.equals("creategroup")) { createGroup(); }
@@ -40,6 +40,7 @@ public class ClientCLI
 			{
 				System.out.println("Invalid command");
 			}
+			refreshToken(username);
 		}
 		while (!command.equals("exit"));
 
@@ -61,13 +62,14 @@ public class ClientCLI
 		}
 	}
 
-	public static void login()
+	public static String login()
 	{
 		UserToken recieved;
+		String username;
 		do
 		{
 			System.out.print("Enter username: ");
-			final String username = scan.nextLine();
+			username = scan.nextLine();
 			recieved = groupClient.getToken(username);
 			if (recieved == null)
 			{
@@ -76,6 +78,12 @@ public class ClientCLI
 		}
 		while(recieved == null);
 		token = recieved;
+		return username;
+	}
+
+	public static void refreshToken(final String username)
+	{
+		token = groupClient.getToken(username);
 	}
 
 	public static void printHelp()
