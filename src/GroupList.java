@@ -1,6 +1,6 @@
 /**
  *
- * @author trana
+ * Parallel structure to UserList.java with a hash table where <k, v> => <group name, list of members>
  */
 import java.util.*;
 public class GroupList implements java.io.Serializable {
@@ -8,15 +8,17 @@ public class GroupList implements java.io.Serializable {
     private static final long serialVersionUID = 7600343803563417992L;
     private Hashtable<String, Group> list = new Hashtable<String, Group>();
 		
-    public synchronized void addGroup(String groupname)
+    public synchronized void addGroup(String groupname, String owner)
     {
         Group newGroup = new Group();
+        newGroup.addOwnership(owner);
+        newGroup.addMember(owner);
         list.put(groupname, newGroup);
     }
 		
     public synchronized void deleteGroup(String groupname)
     {
-    	list.remove(groupname);
+    	System.out.println(list.remove(groupname));
     }
 		
     public synchronized boolean checkGroup(String groupname)
