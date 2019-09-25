@@ -19,6 +19,7 @@ public class GroupServer extends Server {
 
 	public static final int SERVER_PORT = 8765;
 	public UserList userList;
+        public GroupList groupList; //Group lists similar to user lists just reverse
 
 	public GroupServer() {
 		super(SERVER_PORT, "ALPHA");
@@ -32,6 +33,7 @@ public class GroupServer extends Server {
 		// Overwrote server.start() because if no user file exists, initial admin account needs to be created
 
 		String userFile = "UserList.bin";
+                String groupFile = "GroupList.bin";
 		Scanner console = new Scanner(System.in);
 		ObjectInputStream userStream;
 		ObjectInputStream groupStream;
@@ -46,6 +48,7 @@ public class GroupServer extends Server {
 			FileInputStream fis = new FileInputStream(userFile);
 			userStream = new ObjectInputStream(fis);
 			userList = (UserList)userStream.readObject();
+                        System.out.println("UserFile found...");
 		}
 		catch(FileNotFoundException e)
 		{
@@ -59,6 +62,10 @@ public class GroupServer extends Server {
 			userList.addUser(username);
 			userList.addGroup(username, "ADMIN");
 			userList.addOwnership(username, "ADMIN");
+                        
+                        groupList = new GroupList();
+                        groupList.addGroup("ADMIN", username);
+                        System.out.println(username + " is now the administrator.");
 		}
 		catch(IOException e)
 		{
@@ -70,6 +77,7 @@ public class GroupServer extends Server {
 			System.out.println("Error reading from UserList file");
 			System.exit(-1);
 		}
+                
 
 		//Autosave Daemon. Saves lists every 5 minutes
 		AutoSave aSave = new AutoSave(this);
@@ -119,6 +127,8 @@ class ShutDownListener extends Thread
 		{
 			outStream = new ObjectOutputStream(new FileOutputStream("UserList.bin"));
 			outStream.writeObject(my_gs.userList);
+                        outStream = new ObjectOutputStream(new FileOutputStream("GroupList.bin"));
+			outStream.writeObject(my_gs.groupList);
 		}
 		catch(Exception e)
 		{
@@ -149,6 +159,8 @@ class AutoSave extends Thread
 				{
 					outStream = new ObjectOutputStream(new FileOutputStream("UserList.bin"));
 					outStream.writeObject(my_gs.userList);
+                                        outStream = new ObjectOutputStream(new FileOutputStream("GroupList.bin"));
+                                        outStream.writeObject(my_gs.groupList);
 				}
 				catch(Exception e)
 				{
