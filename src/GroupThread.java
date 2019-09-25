@@ -119,7 +119,6 @@ public class GroupThread extends Thread
 							String username = yourToken.getSubject(); //extract username from the token
 							my_gs.userList.addGroup(username, groupname); //add user to group
 							my_gs.userList.addOwnership(username, groupname); //give creator ownership of the group
-							my_gs.groupList.addGroup(groupname, username);
 							response = new Envelope("OK"); //Success
 						}
 					}
@@ -196,7 +195,6 @@ public class GroupThread extends Thread
 							if (my_gs.userList.getUserOwnership(owner).contains(groupname) && my_gs.userList.checkUser(username)) //check if the group exists and the user has ownership of the group they are attempting to add a user to
 							{
 								my_gs.userList.addGroup(username, groupname); //add membership to group
-								my_gs.groupList.addMember(groupname, username); 
 								response = new Envelope("OK"); //Success
 							}
 						}
@@ -229,7 +227,6 @@ public class GroupThread extends Thread
 								else
 								{
 									my_gs.userList.removeGroup(username, groupname); //remove member from group
-									my_gs.groupList.removeMember(groupname, username);
 								}
 								response = new Envelope("OK"); //Success
 							}
@@ -333,10 +330,9 @@ public class GroupThread extends Thread
 					}
 					
 					//Delete the user from the groups
-					//If user is the owner, removeMember will automatically delete group!
 					for(int index = 0; index < deleteFromGroups.size(); index++)
 					{
-						my_gs.groupList.removeMember(deleteFromGroups.get(index), username);
+						my_gs.userList.removeGroup(username, deleteFromGroups.get(index));
 					}
 					
 					//If groups are owned, they must be deleted
@@ -379,16 +375,11 @@ public class GroupThread extends Thread
         
 	private boolean deleteGroup (String groupname, Token yourToken)
 	{
-		ArrayList<String> groupMembers = my_gs.groupList.getGroupMembers(groupname);
-		System.out.println(groupMembers);
+		ArrayList<String> groupMembers = my_gs.userList.getMembers(groupname);
 		for (String member:groupMembers) 
 		{
-			System.out.println("then: "+my_gs.userList.getUserGroups(member));
 			my_gs.userList.removeGroup(member, groupname);
-			System.out.println("now: "+my_gs.userList.getUserGroups(member));
-
 		}
-		my_gs.groupList.deleteGroup(groupname);
 		return true;
 	}
 }
