@@ -62,10 +62,10 @@ public interface GroupClientInterface
      * @param username The name of the user to delete
      * @param token    The token of the user requesting the delete operation
      *
-     * @return true if the user was deleted, false otherwise
+     * @return List of groups that may have been deleted on success, null otherwise
      *
      */
-    public boolean deleteUser(final String username, final UserToken token);
+    public List<String> deleteUser(final String username, final UserToken token);
 
 
     /**
@@ -88,10 +88,10 @@ public interface GroupClientInterface
      * @param groupname The name of the group to delete
      * @param token     The token of the user requesting the delete operation
      *
-     * @return true if the group was deleted, false otherwise
+     * @return List<String> of groups deleted (should be size of 1), null otherwise
      *
      */
-    public boolean deleteGroup(final String groupname, final UserToken token);
+    public List<String> deleteGroup(final String groupname, final UserToken token);
 
 
     /**
@@ -102,7 +102,7 @@ public interface GroupClientInterface
      * @param group The name of the group to which user should be added
      * @param token The token of the user requesting the create operation
      *
-     * @return true if the user was added, false otherwise
+     * @return true if the group was deleted, false otherwise
      *
      */
     public boolean addUserToGroup(final String user, final String group, final UserToken token);
@@ -116,10 +116,10 @@ public interface GroupClientInterface
      * @param group The name of the group from which user should be removed
      * @param token The token of the user requesting the remove operation
      *
-     * @return true if the user was removed, false otherwise
+     * @return List<String> of groups deleted (should be size of 1), null otherwise
      *
      */
-    public boolean deleteUserFromGroup(final String user, final String group, final UserToken token);
+    public List<String> deleteUserFromGroup(final String user, final String group, final UserToken token);
 
 
 

@@ -224,6 +224,22 @@ public class FileClient extends Client implements FileClientInterface {
 				}
 		 return true;
 	}
+    
+    public boolean condFileDelete (List<String> groupsDeleted, Token token)
+    {
+        List<String> files = listFiles(token);
+        if (!groupsDeleted.isEmpty() && !files.isEmpty())
+        {
+            System.out.println("Deleting group files:");
+            for (String file : files) 
+            {
+                System.out.println(file);
+                delete(file, token);
+            }
+            return true;
+        }
+        return false;
+    }
 
 }
 
