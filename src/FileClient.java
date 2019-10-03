@@ -131,6 +131,11 @@ public class FileClient extends Client implements FileClientInterface {
 
 	public boolean upload(String sourceFile, String destFile, String group,
 			UserToken token) {
+
+		if (!(new File(sourceFile).exists())) {
+			System.out.printf("Source file %s does not exist\n", sourceFile);
+			return false;
+		}
 			
 		if (destFile.charAt(0)!='/') {
 			 destFile = "/" + destFile;
