@@ -183,8 +183,8 @@ public class GroupThread extends Thread {
                             String owner = yourToken.getSubject(); //extract username of requester from the token
                             String username = (String) message.getObjContents().get(0); //extract username of the group member to be removed from message
                             String groupname = (String) message.getObjContents().get(1); //Extract the groupname from message
-                            //check if the requester has ownership of the group they are attempting to remove a user from and if the user to be removed exists
-                            if (my_gs.userList.getUserOwnership(owner).contains(groupname) && my_gs.userList.checkUser(username)) 
+                            //check if the requester has ownership of the group they are attempting to remove a user from and if the user to be removed exists and if the user is in the group
+                            if (my_gs.userList.getUserOwnership(owner).contains(groupname) && my_gs.userList.checkUser(username) && my_gs.userList.getUserGroups(username).contains(groupname))
                             {
                                 response = new Envelope("OK"); //Success
                                 ArrayList<String> groupsDeleted = new ArrayList<String>();

@@ -121,10 +121,11 @@ public class ClientCLI {
         List<String> groupsDeleted = groupClient.deleteUser(username, token);
         if (groupsDeleted != null) {
             System.out.println("Successfully deleted user: " + username);
-            if(!groupsDeleted.isEmpty())
+            if (!groupsDeleted.isEmpty()) {
                 System.out.println(username+"'s owned groups: "+groupsDeleted);
-            Token newTok = new Token(null, null, groupsDeleted);
-            fileClient.condFileDelete(groupsDeleted, newTok);
+                Token newTok = new Token(null, null, groupsDeleted);
+                fileClient.condFileDelete(groupsDeleted, newTok);
+            }
         } else {
             System.out.println("Failed to delete user: " + username);
         }
@@ -241,18 +242,6 @@ public class ClientCLI {
             System.out.println("Successfully deleted: " + toDelete);
         } else {
             System.out.println("Failed to delete: " + toDelete);
-        }
-    }
-    
-    private static void condFileDelete (List<String> groupsDeleted)
-    {
-        Token newTok = new Token(null, null, groupsDeleted);
-        List<String> files = fileClient.listFiles((UserToken) newTok);
-        System.out.println("Deleting group files:");
-        for (String file : files) 
-        {
-            System.out.println(file);
-            fileClient.delete(file, (UserToken) newTok);
         }
     }
 }
