@@ -10,10 +10,10 @@ public class ClientCLI {
     static UserToken token;
 
     public static void main(String[] args) {
-//		connect("GroupServer", groupClient);
-//		connect("FileServer", fileClient);
-        groupClient.connect("localhost", 8765);
-        fileClient.connect("localhost", 4321);
+        connect("GroupServer", groupClient);
+        connect("FileServer", fileClient);
+//      groupClient.connect("localhost", 8765);
+//      fileClient.connect("localhost", 4321);
         String username = login();
 
         String command;
@@ -121,10 +121,11 @@ public class ClientCLI {
         List<String> groupsDeleted = groupClient.deleteUser(username, token);
         if (groupsDeleted != null) {
             System.out.println("Successfully deleted user: " + username);
-            if(!groupsDeleted.isEmpty())
+            if (!groupsDeleted.isEmpty()) {
                 System.out.println(username+"'s owned groups: "+groupsDeleted);
-            Token newTok = new Token(null, null, groupsDeleted);
-            fileClient.condFileDelete(groupsDeleted, newTok);
+                Token newTok = new Token(null, null, groupsDeleted);
+                fileClient.condFileDelete(groupsDeleted, newTok);
+            }
         } else {
             System.out.println("Failed to delete user: " + username);
         }
@@ -154,9 +155,9 @@ public class ClientCLI {
     }
 
     public static void addUserToGroup() {
-        System.out.println("Enter user's username: ");
+        System.out.print("Enter user's username: ");
         final String username = scan.nextLine();
-        System.out.println("Enter the group name to add " + username + " to");
+        System.out.print("Enter the group name to add " + username + " to: ");
         final String groupName = scan.nextLine();
         if (groupClient.addUserToGroup(username, groupName, token)) {
             System.out.println("Successfully added " + username + " to group " + groupName);
@@ -166,12 +167,12 @@ public class ClientCLI {
     }
 
     public static void deleteUserFromGroup() {
-        System.out.println("Enter user's username: ");
+        System.out.print("Enter user's username: ");
         final String username = scan.nextLine();
-        System.out.println("Enter the group name to delete " + username + " from");
+        System.out.print("Enter the group name to delete " + username + " from: ");
         final String groupName = scan.nextLine();
-        List<String> groupsDeleted = groupClient.deleteGroup(groupName, token);
-        if (groupsDeleted !=null) {
+        List<String> groupsDeleted = groupClient.deleteUserFromGroup(username, groupName, token);
+        if (groupsDeleted != null) {
             System.out.println("Successfully deleted " + username + " from group " + groupName);
             if (!groupsDeleted.isEmpty())
             {
@@ -185,7 +186,7 @@ public class ClientCLI {
     }
 
     public static void listMembers() {
-        System.out.println("Enter the group name to list members from: ");
+        System.out.print("Enter the group name to list members from: ");
         final String groupName = scan.nextLine();
         final List<String> members = groupClient.listMembers(groupName, token);
         if (members != null) {
@@ -213,7 +214,7 @@ public class ClientCLI {
         final String source = scan.nextLine();
         System.out.print("Enter the destination file's name: ");
         final String destination = scan.nextLine();
-        System.out.println("Enter the group name which the file should be shared with: ");
+        System.out.print("Enter the group name which the file should be shared with: ");
         final String groupName = scan.nextLine();
         if (fileClient.upload(source, destination, groupName, token)) {
             System.out.println("Successfully uploaded: " + source);
@@ -241,18 +242,6 @@ public class ClientCLI {
             System.out.println("Successfully deleted: " + toDelete);
         } else {
             System.out.println("Failed to delete: " + toDelete);
-        }
-    }
-    
-    private static void condFileDelete (List<String> groupsDeleted)
-    {
-        Token newTok = new Token(null, null, groupsDeleted);
-        List<String> files = fileClient.listFiles((UserToken) newTok);
-        System.out.println("Deleting group files:");
-        for (String file : files) 
-        {
-            System.out.println(file);
-            fileClient.delete(file, (UserToken) newTok);
         }
     }
 }

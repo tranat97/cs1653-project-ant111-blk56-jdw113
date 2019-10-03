@@ -162,7 +162,8 @@ public class GroupThread extends Thread {
                             String owner = yourToken.getSubject(); //extract username of requester from the token
                             String username = (String) message.getObjContents().get(0); //extract username of the new group member from message
                             String groupname = (String) message.getObjContents().get(1); //Extract the groupname from message
-                            if (my_gs.userList.getUserOwnership(owner).contains(groupname) && my_gs.userList.checkUser(username)) //check if the group exists and the user has ownership of the group they are attempting to add a user to
+                            //check if the group exists and the user has ownership of the group they are attempting to add a user to and if the user is not already in the group
+                            if (my_gs.userList.getUserOwnership(owner).contains(groupname) && my_gs.userList.checkUser(username) && !my_gs.userList.getUserGroups(username).contains(groupname))
                             {
                                 my_gs.userList.addGroup(username, groupname); //add membership to group
                                 response = new Envelope("OK"); //Success
@@ -182,7 +183,8 @@ public class GroupThread extends Thread {
                             String owner = yourToken.getSubject(); //extract username of requester from the token
                             String username = (String) message.getObjContents().get(0); //extract username of the group member to be removed from message
                             String groupname = (String) message.getObjContents().get(1); //Extract the groupname from message
-                            if (my_gs.userList.getUserOwnership(owner).contains(groupname) && my_gs.userList.checkUser(username)) //check if the user has ownership of the group they are attempting to delete
+                            //check if the requester has ownership of the group they are attempting to remove a user from and if the user to be removed exists and if the user is in the group
+                            if (my_gs.userList.getUserOwnership(owner).contains(groupname) && my_gs.userList.checkUser(username) && my_gs.userList.getUserGroups(username).contains(groupname))
                             {
                                 response = new Envelope("OK"); //Success
                                 ArrayList<String> groupsDeleted = new ArrayList<String>();
