@@ -26,6 +26,7 @@ public class ClientCLI {
                 printHelp();
             } else if (command.equals("changeuser")) {
                 username = login();
+                refreshToken(username);
             } else if (command.equals("createuser")) {
                 createUser();
             } else if (command.equals("deleteuser")) {
@@ -51,7 +52,6 @@ public class ClientCLI {
             } else if (!command.equals("exit")) {
                 System.out.println("Invalid command");
             }
-            refreshToken(username);
         } while (!command.equals("exit"));
 
         groupClient.disconnect();
