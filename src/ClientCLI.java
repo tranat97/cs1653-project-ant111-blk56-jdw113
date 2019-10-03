@@ -154,9 +154,9 @@ public class ClientCLI {
     }
 
     public static void addUserToGroup() {
-        System.out.println("Enter user's username: ");
+        System.out.print("Enter user's username: ");
         final String username = scan.nextLine();
-        System.out.println("Enter the group name to add " + username + " to");
+        System.out.print("Enter the group name to add " + username + " to: ");
         final String groupName = scan.nextLine();
         if (groupClient.addUserToGroup(username, groupName, token)) {
             System.out.println("Successfully added " + username + " to group " + groupName);
@@ -166,12 +166,12 @@ public class ClientCLI {
     }
 
     public static void deleteUserFromGroup() {
-        System.out.println("Enter user's username: ");
+        System.out.print("Enter user's username: ");
         final String username = scan.nextLine();
-        System.out.println("Enter the group name to delete " + username + " from");
+        System.out.print("Enter the group name to delete " + username + " from: ");
         final String groupName = scan.nextLine();
-        List<String> groupsDeleted = groupClient.deleteGroup(groupName, token);
-        if (groupsDeleted !=null) {
+        List<String> groupsDeleted = groupClient.deleteUserFromGroup(username, groupName, token);
+        if (groupsDeleted != null) {
             System.out.println("Successfully deleted " + username + " from group " + groupName);
             if (!groupsDeleted.isEmpty())
             {
@@ -185,7 +185,7 @@ public class ClientCLI {
     }
 
     public static void listMembers() {
-        System.out.println("Enter the group name to list members from: ");
+        System.out.print("Enter the group name to list members from: ");
         final String groupName = scan.nextLine();
         final List<String> members = groupClient.listMembers(groupName, token);
         if (members != null) {
