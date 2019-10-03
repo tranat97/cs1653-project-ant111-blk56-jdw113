@@ -10,10 +10,10 @@ public class ClientCLI {
     static UserToken token;
 
     public static void main(String[] args) {
-//		connect("GroupServer", groupClient);
-//		connect("FileServer", fileClient);
-        groupClient.connect("localhost", 8765);
-        fileClient.connect("localhost", 4321);
+        connect("GroupServer", groupClient);
+        connect("FileServer", fileClient);
+//      groupClient.connect("localhost", 8765);
+//      fileClient.connect("localhost", 4321);
         String username = login();
 
         String command;
