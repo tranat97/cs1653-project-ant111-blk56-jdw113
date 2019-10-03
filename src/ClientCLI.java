@@ -213,7 +213,7 @@ public class ClientCLI {
         final String source = scan.nextLine();
         System.out.print("Enter the destination file's name: ");
         final String destination = scan.nextLine();
-        System.out.println("Enter the group name which the file should be shared with: ");
+        System.out.print("Enter the group name which the file should be shared with: ");
         final String groupName = scan.nextLine();
         if (fileClient.upload(source, destination, groupName, token)) {
             System.out.println("Successfully uploaded: " + source);
