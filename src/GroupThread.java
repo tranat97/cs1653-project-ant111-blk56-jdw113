@@ -94,9 +94,14 @@ public class GroupThread extends Thread {
                             UserToken yourToken = (UserToken) message.getObjContents().get(1); //Extract the token
                             String groupname = (String) message.getObjContents().get(0); //Extract the groupname from message
                             String username = yourToken.getSubject(); //extract username from the token
-                            my_gs.userList.addGroup(username, groupname); //add user to group
-                            my_gs.userList.addOwnership(username, groupname); //give creator ownership of the group
-                            response = new Envelope("OK"); //Success
+                            ArrayList<String> checkMembers = new ArrayList<String>();
+                            checkMembers = my_gs.userList.getMembers(groupname);
+                            if(checkMembers.isEmpty())
+                            {
+                                my_gs.userList.addGroup(username, groupname); //add user to group
+                                my_gs.userList.addOwnership(username, groupname); //give creator ownership of the group
+                                response = new Envelope("OK"); //Success
+                            }
                         }
                     }
                     output.writeObject(response);

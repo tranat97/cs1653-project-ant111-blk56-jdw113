@@ -26,18 +26,24 @@ public class ClientCLI {
                 printHelp();
             } else if (command.equals("changeuser")) {
                 username = login();
+                refreshToken(username);
             } else if (command.equals("createuser")) {
                 createUser();
             } else if (command.equals("deleteuser")) {
                 deleteUser();
+                refreshToken(username);
             } else if (command.equals("creategroup")) {
                 createGroup();
+                refreshToken(username);
             } else if (command.equals("deletegroup")) {
                 deleteGroup();
+                refreshToken(username);
             } else if (command.equals("addusertogroup")) {
                 addUserToGroup();
+                refreshToken(username);
             } else if (command.equals("deleteuserfromgroup")) {
                 deleteUserFromGroup();
+                refreshToken(username);
             } else if (command.equals("listmembers")) {
                 listMembers();
             } else if (command.equals("listfiles")) {
@@ -51,7 +57,6 @@ public class ClientCLI {
             } else if (!command.equals("exit")) {
                 System.out.println("Invalid command");
             }
-            refreshToken(username);
         } while (!command.equals("exit"));
 
         groupClient.disconnect();
@@ -81,6 +86,7 @@ public class ClientCLI {
                 System.out.println("Invalid username");
             }
         } while (recieved == null);
+        
         token = recieved;
         return username;
     }
