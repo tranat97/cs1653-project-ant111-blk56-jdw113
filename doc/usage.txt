@@ -21,3 +21,8 @@ USAGE:
  
  Note that this implementation supports server side directories.
 
+ To start CLI client: java ClientCLI
+ When the CLI client is first started, you must enter the address and port of the
+ group server and file server. You will also need to enter a username.
+ Once the prompt is available, type "help" to see a list of commands, or "exit"
+ to quit the client.
