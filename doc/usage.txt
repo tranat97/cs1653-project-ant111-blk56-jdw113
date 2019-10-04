@@ -26,3 +26,50 @@ USAGE:
  group server and file server. You will also need to enter a username.
  Once the prompt is available, type "help" to see a list of commands, or "exit"
  to quit the client.
+ Valid commands:
+   help
+     Prints out all commands.
+   exit
+     Quits ClientCLI.
+   changeuser
+     When prompted, enter a valid username to change to.
+   createuser
+     When prompted, enter the new user's username.
+	 The current user must be member of the ADMIN group to create a user.
+   deleteuser
+     When prompted, enter the username to be deleted.
+	 The current user must be a member of the ADMIN group to delete a user.
+   creategroup
+     When prompted, enter the new group's name.
+   deletegroup
+     When prompted, enter the group name to be deleted.
+	 The current user must be the owner of the group in order to delete it.
+   addusertogroup
+     When prompted, enter the username to add and the group name to add the user to.
+	 The current user must be the owner of the group in order to add a user to it.
+   deleteuserfromgroup
+     When prompted, enter the username to remove and the group name to remove the user from.
+	 The current user must be the owner of the group in order to delete a user from it.
+   listmembers
+     When prompted, enter the group name to list the members of.
+	 The current user must be the owner of the group to list the members.
+   listfiles
+     All files belonging to groups that the current user is a member of will be listed.
+   upload
+     when prompted, enter the source file's path, the destination file name, and the group
+	 name to share the file with.
+	 The current user must be a member of the group to share a file to the group.
+   download
+     When prompted, enter the source file's name and the destination file's path.
+	 The current user must be in the group that the file is shared with in order to download the file.
+   delete
+     When prompted, enter the file name to delete.
+	 The current user must be in the group that the file is shared with in order to delete the file.
+   
+
+
+
+
+
+
+
