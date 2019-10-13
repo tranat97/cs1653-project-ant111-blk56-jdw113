@@ -19,9 +19,7 @@ header {
       <h1>CS 1653 Project P3 Writeup</h1>
       <h2>
 <!-- BEGIN CHANGES HERE -->
-
-William Garrison
-
+Andrew Tran: ant111@pitt.edu, Blaise Kesler: blk56@pitt.edu, Jeremy Wertkin: jdw113@pitt.edu
 <!-- END CHANGES HERE -->
       </h2>
     </header>
@@ -38,7 +36,80 @@ your group has decided to use to address threats T1â€“T4.</p>
       <h2>Threat T1: Unauthorized Token Issuance</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p>Begin this section by describing threat T1. This may include describing
+<p>In our project's current state, nothing is being done to prevent
+unauthorized token issuance. The only proof that a group server requires
+in order to issue a token is that the user logging in knows their own username.
+The only way this could be secure is if we made the assumption that all
+clients were trustworthy, but this can not be assumed. A user <em>a</em>
+could have knowledge of another user <em>b</em>'s username, and use this
+information to trick the group server into issuing <em>b</em>'s token to
+<em>a</em>. This threat is extremely problematic. If unauthorized token
+issuance is exploited, an attacker could impersonate the admin of a group
+server or the owner of a group. This would give the attacker the ability to
+delete groups, users, and files. For our file sharing system to be reliable
+and secure, it must be impossible to exploit the threat of unauthorized token
+issuance.</p>
+
+<p>Our solution to prevent exploiting unauthorized token issuance is to
+implement a password based authentication system. Changes will need to be made
+so that the initial user created when the group server starts for the first time
+will be given a password. These passwords will not be stored as plaintext on the server.
+If the passwords were stored in plaintext, an attacker would only need access to the file
+containing the passwords to obtain every registered user's password. The group server
+will salt and hash passwords (using PBKDF2 to hash) and store the salt and hash in the user list.
+PBKDF2 is a purposefully slow hashing algorithm, this makes it very time consuming to
+create a table of common password hashes. When combined with salting, an attacker would
+have to generate a table of common password hashes for every user in the database in order to
+break all of their passwords. Salting also prevents an attacker from seeing that two
+users have the same password, protecting against simultaneous attacks.</p>
+
+<p>To prevent a passive adversary from obtaining a user's password as it travels
+along the network, we will be using hybrid cryptography to establish a secure
+channel between the client and the group server. This will involve 4096-bit RSA
+key pairs and 256-bit AES keys, which will provide a level of encryption that
+will be infeasible to break.</p>
+
+<p>All together, our mechanism for preventing unauthorized token issuance will follow these steps:</p>
+<ol>
+    <li>Client generates a 4096-bit RSA key pair</li>
+    <li>Client sends public key to group server</li>
+    <li>Group server generates a 256-bit AES key</li>
+    <li>Group server encrypts AES key with client's public key</li>
+    <li>Group server sends encrypted AES key to client</li>
+    <li>Client decrypts AES key with their private key</li>
+    <li>Client encrypts username and password with AES key</li>
+    <li>Client sends encrypted username and password to group server</li>
+    <li>Group server decrypts username and password</li>
+    <li>Group server salts password with the salt recorded for that username</li>
+    <li>Group server hashes the salted password using PBKDF2</li>
+    <li>Group server checks hash against user's recorded hash</li>
+    <li>If hashes match, group server creates, encrypts, and sends the user's token to the client</li>
+</ol>
+
+<p>Assuming users are not storing their passwords in an insecure way or
+willingly sharing passwords, this mechanism protects against unauthorized
+token issuance in a correct and secure way. The client and group server
+agree on a symmetric key when the group server generates and sends it to the client.
+This key is only used for this session and user.
+Key distribution is done securely, only the client can decrypt the symmetric key
+because it was encrypted with the client's public key. After this, all
+communication between the client and group server is protected through
+the agreed upon symmetric key. For a passive adversary to listen in on
+the conversation, he would have to either break the initial public key encryption,
+or brute force the symmetric key. The password is salted and hashed before it
+is stored, which adds security to the password database. With this mechanism in place,
+an attacker would have to know a victim's password in order to impersonate them and obtain
+their token. This could only happen through the victim's own negligence, our
+authentication protocol does not allow a user's password to be leaked.
+</p>
+
+<!-- END CHANGES HERE -->
+    </section>
+    <section id="threat2">
+      <h2>Threat T2: Token Modification/Forgery</h2>
+<!-- BEGIN CHANGES HERE -->
+
+<p>Begin this section by describing threat T2. This may include describing
 examples of the threat being exploited by an adversary, a short discussion of
 why this threat is problematic and needs to be addressed, and/or diagrams
 showing how the threat might manifest in your groupâ€™s insecure
@@ -61,19 +132,30 @@ party can figure out the key (security).</p>
 
 <!-- END CHANGES HERE -->
     </section>
-    <section id="threat2">
-      <h2>Threat T2: Token Modification/Forgery</h2>
-<!-- BEGIN CHANGES HERE -->
-
-<p>Repeat the steps as for Threat T1.</p>
-
-<!-- END CHANGES HERE -->
-    </section>
     <section id="threat3">
       <h2>Threat T3: Unauthorized File Servers</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p>Repeat the steps as for Threat T1.</p>
+<p>Begin this section by describing threat T3. This may include describing
+examples of the threat being exploited by an adversary, a short discussion of
+why this threat is problematic and needs to be addressed, and/or diagrams
+showing how the threat might manifest in your groupâ€™s insecure
+implementation.</p>
+
+<p>Next, provide a short description of the mechanism that you chose to
+implement to protect against this threat. For interactive protocols, it would be
+helpful to provide a diagram explaining the messages exchanged between
+participating principals (use html &lt;img&gt; tag to import such images). Be
+sure to explain any cryptographic choices that your group makes: What types of
+algorithms, modes of operation, and/or key lengths did you choose? Why? If
+shared keys are needed, how are they exchanged?</p>
+
+<p>Finally, provide a short argument addressing why your proposed mechanism
+sufficiently addresses this particular threat. This argument should address the
+correctness of your approach, as well as its overall security. For example, if
+your mechanism involves a key agreement or key exchange protocol, you should
+argue that both parties agree on the same key (correctnes) and that no other
+party can figure out the key (security).</p>
 
 <!-- END CHANGES HERE -->
     </section>
@@ -81,7 +163,26 @@ party can figure out the key (security).</p>
       <h2>Threat T4: Information Leakage via Passive Monitoring</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p>Repeat the steps as for Threat T1.</p>
+<p>Begin this section by describing threat T4. This may include describing
+examples of the threat being exploited by an adversary, a short discussion of
+why this threat is problematic and needs to be addressed, and/or diagrams
+showing how the threat might manifest in your groupâ€™s insecure
+implementation.</p>
+
+<p>Next, provide a short description of the mechanism that you chose to
+implement to protect against this threat. For interactive protocols, it would be
+helpful to provide a diagram explaining the messages exchanged between
+participating principals (use html &lt;img&gt; tag to import such images). Be
+sure to explain any cryptographic choices that your group makes: What types of
+algorithms, modes of operation, and/or key lengths did you choose? Why? If
+shared keys are needed, how are they exchanged?</p>
+
+<p>Finally, provide a short argument addressing why your proposed mechanism
+sufficiently addresses this particular threat. This argument should address the
+correctness of your approach, as well as its overall security. For example, if
+your mechanism involves a key agreement or key exchange protocol, you should
+argue that both parties agree on the same key (correctnes) and that no other
+party can figure out the key (security).</p>
 
 <!-- END CHANGES HERE -->
     </section>
