@@ -54,15 +54,13 @@ of unauthorized token issuance.</p>
 <p>Our solution to prevent exploiting unauthorized token issuance is to implement
 a password based authentication system. Changes will need to be made so that the
 initial user created when the group server starts for the first time will be given
-a password. These passwords will not be stored as plaintext on the server. If the
-passwords were stored in plaintext, an attacker would only need access to the file
-containing the passwords to obtain every registered user's password. The group server
-will salt and hash passwords (using PBKDF2 to hash) and store the salt and hash in 
-the user list. PBKDF2 is a purposefully slow hashing algorithm, this makes it very time
-consuming to create a rainbow table. When combined with salting, an attacker would
-have to generate a rainbow table for every user in the database in order to break all
-of their passwords. Salting also prevents an attacker from seeing that two users have
-the same password, protecting against simultaneous attacks.</p>
+a password. Whenever a user is created through a client, the new user will be
+given a password along with their username. These passwords will not need to be
+stored securely on the server, plaintext will suffice. If the group servers can
+be trusted and the only attacker in our system is a passive adversary, there is no
+reason to hash and salt passwords. The attacker would have to gain access to the
+group server's file system in order to obtain the file storing passwords, and this
+is not something a passive adversary can do.</p>
 
 <p>To prevent a passive adversary from obtaining a user's password as it travels
 along the network, we will be using hybrid cryptography to establish a secure
@@ -70,18 +68,11 @@ channel between the client and the group server. To do this, we will use 4096-bi
 RSA key pairs and a 256-bit AES key. This should provide a level of encryption
 that will be infeasible to break.</p>
 
-<p>An attacker could encrypt an AES key with the user's public key, and then send
-this to the user. The user would think they are still talking to the server and
-send the attacker their password. In order to prevent this, the group server will
-send a signature of the hash (SHA-256) of the encrypted AES key along with the
-encrypted AES key. In order to verify this signature, the user will have to trust 
-the group server's public key. This will be done in a similar method to how SSH
-allows users to authenticate servers. The group server will send its public key,
-and the client will check to see if it matches the previously recorded public key.
-If the client does not have a record for this group server's public key, then the
-client will present the key's fingerprint (hash of the public key using SHA-256)
-and ask the user if it is correct. At this point it is on the user to contact the
-admin of the group server to see if it should be trusted.</p>
+<p>An attacker could encrypt an AES key with the user's public key, hijack the communication
+between client and group server, and then send the compromised key to the user. The user
+would think they are still talking to the server and send the attacker their password.
+To prevent this, we could have the group server sign the symmetric key, but this is not a
+valid attack in our current threat model, as we are only considering passive adversaries.</p>
 
 <p>All together, our mechanism for preventing unauthorized token issuance will follow these steps:</p>
 <ul>
@@ -92,39 +83,33 @@ admin of the group server to see if it should be trusted.</p>
 </ul>
 <ol>
     <li>GS &rarr; C: <em>k</em><sub>gs</sub></li>
-    <li>Client ensures group server can be trusted by checking the recorded public key or asking the user</li>
     <li>C &rarr; GS: <em>k</em><sub>c</sub></li>
     <li>Group server generates a 256-bit AES key <em>k</em><sub>AES</sub></li>
-    <li>GS &rarr; C: {<em>k</em><sub>AES</sub>}<em>k</em><sub>c</sub>,
-        {H({<em>k</em><sub>AES</sub>}<em>k</em><sub>c</sub>)}<em>k</em><sub>gs</sub><sup>-1</sup></li>
-	<li>Client computes H({<em>k</em><sub>AES</sub>}<em>k</em><sub>c</sub>) and verifies signature using <em>k</em><sub>gs</sub></li>
+	<li>GS &rarr; C: { <em>k</em><sub>AES</sub> }<em>k</em><sub>c</sub></li>
     <li>Client decrypts <em>k</em><sub>AES</sub> with <em>k</em><sub>c</sub><sup>-1</sup></li>
-    <li>C &rarr; GS: {username}<em>k</em><sub>AES</sub>, {password}<em>k</em><sub>AES</sub></li>
+    <li>C &rarr; GS: { username || password }<em>k</em><sub>AES</sub>
 	<li>Group server decrypts username and password with <em>k</em><sub>AES</sub></li>
-    <li>Group server salts password with the salt recorded for that username</li>
-    <li>Group server hashes the salted password using PBKDF2</li>
-    <li>Group server checks hash against user's recorded hash</li>
-    <li>GS &rarr; C: {token}<em>k</em><sub>AES</sub>, {H(token)}<em>k</em><sub>gs</sub><sup>-1</sup></li>
+    <li>Group server checks password against user's recorded password</li>
+    <li>GS &rarr; C: { token }<em>k</em><sub>AES</sub>, { H(token) }<em>k</em><sub>gs</sub><sup>-1</sup></li>
     <li>Client decrypts token with <em>k</em><sub>AES</sub></li>
-	<li>Client hashes token and verifies signature</li>
 </ol>
 
-<p>Assuming users are not storing their passwords in an insecure way or willingly
-sharing passwords, this mechanism protects against unauthorized token issuance in
+<p>Assuming users are not willingly sharing passwords and we are only protecting
+against passive adversaries, this mechanism protects against unauthorized token issuance in
 a correct and secure way. The client and group server agree on a symmetric key
 when the group server generates and sends it to the client. This key is only used
 for this session and user. The client can trust that the symmetric key came from
-the group server and was not modified along the way because the group server
-signed the hash of the encrypted symmetric key. Only the client can decrypt the
+the group server and was not modified along the way because there are only passive
+adversaries in this threat model. The client can trust that no one else has the 
 symmetric key because it was encrypted with the client's public key. After this,
 all communication between the client and group server is protected through the
 agreed upon symmetric key. For a passive adversary to listen in on the conversation,
 he would have to either break the initial public key encryption of the symmetric key,
-or brute force the symmetric key. The password is salted and hashed before it is
-stored, which adds security to the password database. With this mechanism in place,
-an attacker would have to know a victim's password in order to impersonate them and
-obtain their token. This could only happen through the victim's own negligence, our
-authentication protocol does not allow a user's password to be leaked.</p>
+or brute force the symmetric key. With this mechanism in place, a passive adversary
+would have to know a victim's password in order to impersonate them and
+obtain their token. This could only happen through the victim's own negligence, or by
+recording the victims encrypted password and performing an offline attack on the
+256-bit AES encryption.</p>
 
 <!-- END CHANGES HERE -->
     </section>
