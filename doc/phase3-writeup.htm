@@ -84,14 +84,14 @@ valid attack in our current threat model, as we are only considering passive adv
 <ol>
     <li>GS &rarr; C: <em>k</em><sub>gs</sub></li>
     <li>C &rarr; GS: <em>k</em><sub>c</sub></li>
-    <li>Group server generates a 256-bit AES key <em>k</em><sub>AES</sub></li>
+    <li>GS generates a 256-bit AES key <em>k</em><sub>AES</sub></li>
 	<li>GS &rarr; C: { <em>k</em><sub>AES</sub> }<em>k</em><sub>c</sub></li>
-    <li>Client decrypts <em>k</em><sub>AES</sub> with <em>k</em><sub>c</sub><sup>-1</sup></li>
+    <li>C decrypts <em>k</em><sub>AES</sub> with <em>k</em><sub>c</sub><sup>-1</sup></li>
     <li>C &rarr; GS: { username || password }<em>k</em><sub>AES</sub>
-	<li>Group server decrypts username and password with <em>k</em><sub>AES</sub></li>
-    <li>Group server checks password against user's recorded password</li>
+	<li>GS decrypts username and password with <em>k</em><sub>AES</sub></li>
+    <li>GS checks password against user's recorded password</li>
     <li>GS &rarr; C: { token }<em>k</em><sub>AES</sub>, { H(token) }<em>k</em><sub>gs</sub><sup>-1</sup></li>
-    <li>Client decrypts token with <em>k</em><sub>AES</sub></li>
+    <li>C decrypts token with <em>k</em><sub>AES</sub></li>
 </ol>
 
 <p>Assuming users are not willingly sharing passwords and we are only protecting
@@ -117,26 +117,56 @@ recording the victims encrypted password and performing an offline attack on the
       <h2>Threat T2: Token Modification/Forgery</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p>Begin this section by describing threat T2. This may include describing
-examples of the threat being exploited by an adversary, a short discussion of
-why this threat is problematic and needs to be addressed, and/or diagrams
-showing how the threat might manifest in your groupâ€™s insecure
-implementation.</p>
+<p>Token modification or forgery would invalidate the work we will do
+to prevent unauthorized token issuance. Currently, there is no way to
+prove that a token originated from a group server and has not been
+modified. An attacker could either forge a token or modify a
+legitimate token to give themselves access to other group's files
+and higher privileges in the group server. This is problematic if we
+assume that the clients are not trustworthy.</p>
 
-<p>Next, provide a short description of the mechanism that you chose to
-implement to protect against this threat. For interactive protocols, it would be
-helpful to provide a diagram explaining the messages exchanged between
-participating principals (use html &lt;img&gt; tag to import such images). Be
-sure to explain any cryptographic choices that your group makes: What types of
-algorithms, modes of operation, and/or key lengths did you choose? Why? If
-shared keys are needed, how are they exchanged?</p>
+<p>Our solution to this problem will be based on digital signatures.
+The group server will generate a 4096-bit RSA key pair the first time
+it is started. Anytime the group server sends an encrypted token to a
+client, the group server will also send a digital signature of the hash
+of the token. Hashing the token before signing allows it to be transmitted
+in plaintext and puts an upper limit on the size for RSA encryption.
+The token will be hashed using SHA-256, we need to use a cryptographically
+strong hashing algorithm so that it is infeasible to forge a token that has
+an identical hash to genuine token. The UserToken interface will be extended
+so that it can verify that a token can be trusted. This will be done by
+verifying the signature using the group server's public key.</p>
 
-<p>Finally, provide a short argument addressing why your proposed mechanism
-sufficiently addresses this particular threat. This argument should address the
-correctness of your approach, as well as its overall security. For example, if
-your mechanism involves a key agreement or key exchange protocol, you should
-argue that both parties agree on the same key (correctnes) and that no other
-party can figure out the key (security).</p>
+<p>For a file server to be able to verify a token, the file server must
+have a list of trusted group server public keys. The file server cannot
+rely on the client to send the group server's public key along with the
+signature, because the client could generate their own signature and send
+their own public key. Therefore, the file server admin will have to create
+a file of trusted group server public keys by contacting group server admins.
+These trusted keys will then be used to verify the signature of the token.
+If no trusted keys match, then the file server should reject the token.</p>
+
+<ul>
+	<li><em>k</em><sub>gs</sub><sup>-1</sup>: Group server's private key</li>
+    <li><em>k</em><sub>AES</sub>: Shared key between client and file server,
+      different from key shared between client and group server</li>
+</ul>
+<ol>
+    <li>C &rarr; FS: { token }<em>k</em><sub>AES</sub>, { H(token) }<em>k</em><sub>gs</sub><sup>-1</sup></li>
+	<li>FS attempts to verify { H(token) }<em>k</em><sub>gs</sub><sup>-1</sup> using list of trusted group server public keys</li>
+	<li>If FS successfully verifies signature, then FS accepts the token</li>
+</ol>
+
+<p>This mechanism for preventing token modification and forgery allows file
+servers to verify that the token they received from a client was made by, and was
+not modified after leaving, a trusted group server. The only downside to this
+approach is that the server admins will need to communicate to get a group
+server's public key. However, the only other option is to have the client pass it
+on, and we cannot trust that the client will send the group server's public key.
+If the file server is able to verify a token's signature, it should completely
+trust the authenticity of that token. There is no way a client could have sent
+a modified token if the file server is able to verify the signature using a
+trusted group server's public key.</p>
 
 <!-- END CHANGES HERE -->
     </section>
@@ -185,14 +215,15 @@ system similar to SSH using a 4096-bit RSA key pair to authenticate the file ser
 On the initial connection to a file server, the user will request the server's public 
 key. The host the user is connected to will send their public key and the user must 
 decide whether or not to trust the key. Confirming the validity of the given key 
-should be done through another secure channel. If the user chooses to trust the key, 
-a series of 10 challenges (a 256-bit random nonce encrypted with the public key) are sent to 
+should be done through another secure channel, like directly contacting the file server admin. 
+If the user chooses to trust the key, then the key will be saved locally. If the next time
+the user connects to the file server a different key is returned, the client will know
+not to trust that file server. After ensuring the public key can be trusted,
+a series of 3 challenges (a 256-bit random nonce encrypted with the public key) are sent to 
 the host from the user. For each challenge, the host must decrypt the challenge using 
 their private key and send the decrypted nonce back to the user. If the nonces sent from the host 
 match the nonces that the user generated for each challenge, the user can be confident 
-that the host they are connected to is the real file server. The user can then 
-save the public key locally along with the IP address of the file server so the 
-authentication process only needs to happen once per IP.
+that the host they are connected to is the real file server. 
 </p>
 
 <ul>
@@ -208,7 +239,7 @@ authentication process only needs to happen once per IP.
 	<li>FS decrypts { <em>r</em> }<em>k</em><sub>fs</sub> with <em>k</em><sub>fs</sub><sup>-1</sup></li>
 	<li>FS &rarr; C: <em>r</em></li>
     <li>C checks for correct <em>r</em></li>
-	<li>Repeat 3-7 10 times</li>
+	<li>Repeat steps 3-7 2 more times</li>
 </ol>
 
 <!--
@@ -231,9 +262,9 @@ assume all users will verify public keys before trusting them, this mechanism wi
 allow users to be confident that the host they are connected to is the real file server. 
 The challenge system is a zero-knowledge proof that allows the file server to prove 
 they know the private key that matches the trusted public key. We run this challenge 
-10 times to make sure an attacker didn't just guess <em>r</em>. An attacker may be able 
-to guess <em>r</em> correctly once, but guessing correctly 10 times is very unlikely. 
-The file server does not need to reencrypt <em>r</em> when replying to the user's challenge 
+3 times to make sure an attacker didn't just guess <em>r</em>. It would be very unlikely 
+to guess <em>r</em> correctly once, but guessing correctly 3 times is statistically impossible. 
+The file server does not need to re-encrypt <em>r</em> when replying to the user's challenge 
 because even if an attacker saved these values, a replay attack would not be possible 
 because <em>r</em> should be generated randomly and should never be reused. Also, since 
 a public key system is being used to encrypt <em>r</em>, a chosen plaintext attack does 
@@ -246,6 +277,19 @@ about sending plaintext.
     <section id="threat4">
       <h2>Threat T4: Information Leakage via Passive Monitoring</h2>
 <!-- BEGIN CHANGES HERE -->
+
+<p> For creating a shared key between fileserver and client, assuming the process in T3
+has already happened.<p>
+<ul>
+    <li><em>k</em><sub>c</sub>: Client's public key</li>
+    <li><em>k</em><sub>c</sub><sup>-1</sup>: Client's private key</li>
+</ul>
+<ol>
+    <li>C &rarr; FS: <em>k</em><sub>c</sub></li>
+    <li>FS generates a 256-bit AES key <em>k</em><sub>AES</sub></li>
+	<li>FS &rarr; C: { <em>k</em><sub>AES</sub> }<em>k</em><sub>c</sub></li>
+    <li>C decrypts <em>k</em><sub>AES</sub> with <em>k</em><sub>c</sub><sup>-1</sup></li>
+</ol>
 
 <p>Begin this section by describing threat T4. This may include describing
 examples of the threat being exploited by an adversary, a short discussion of
