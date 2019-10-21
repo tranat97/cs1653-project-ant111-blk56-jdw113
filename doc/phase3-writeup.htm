@@ -306,12 +306,12 @@ has already happened.<p>
     <li>C decrypts <em>k</em><sub>AES</sub> with <em>k</em><sub>c</sub><sup>-1</sup></li>
 </ol>
 
-<p>Finally, provide a short argument addressing why your proposed mechanism
-sufficiently addresses this particular threat. This argument should address the
-correctness of your approach, as well as its overall security. For example, if
-your mechanism involves a key agreement or key exchange protocol, you should
-argue that both parties agree on the same key (correctnes) and that no other
-party can figure out the key (security).</p>
+<p>This mechanism for preventing information leakage via passive monitoring ensures that all 
+communication is secure.  Both the client and server agree on the same shared AES key.  
+They establish this key in a secure way by encrypting their communication with RSA.  
+The key sizes are also large enough that it is infeasible to decrypt any communication 
+stolen through passive monitoring. Finally, this mechanism assumes that the file server can
+be trusted, as this is covered in T3 and is assumed to have already occurred.</p>
 
 <!-- END CHANGES HERE -->
     </section>
