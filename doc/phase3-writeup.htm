@@ -27,8 +27,13 @@ Andrew Tran: ant111@pitt.edu, Blaise Kesler: blk56@pitt.edu, Jeremy Wertkin: jdw
       <h2>Overview</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p>In this section, broadly overview the types of cryptographic techniques that
-your group has decided to use to address threats T1â€“T4.</p>
+<p>We will be using passwords to authenticate users with the group
+server (T1). RSA signatures will allow us to ensure that a token has not been
+forged or modified (T2). Public key fingerprinting and zero-knowledge
+proofs gives the client the ability to authenticate a file server (T3).
+A combination of public key encryption using 4096-bit RSA and symmetric key
+encryption using 256-bit AES allows the client to securely communicate with
+the group and file server (T4).</p>
 
 <!-- END CHANGES HERE -->
     </section>
@@ -174,14 +179,6 @@ trusted group server's public key.</p>
       <h2>Threat T3: Unauthorized File Servers</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<!-- 
-<p>Begin this section by describing threat T3. This may include describing
-examples of the threat being exploited by an adversary, a short discussion of
-why this threat is problematic and needs to be addressed, and/or diagrams
-showing how the threat might manifest in your groupâ€™s insecure
-implementation.</p> 
--->
-
 <p>In the project's current build, there is no way to authenticate the file server 
 that a user is connecting to, the user simply trusts the machine it's connected to 
 is the real file server. The only requirement for a user to connect to a server is 
@@ -198,16 +195,6 @@ user and giving them access to the user's group files. Users would also accept a
 file the attacker sends. For example, the attacker could send a malicious file with the 
 same name as the one the user requested to trick them into opening it.
 </p>
-
-<!--
-<p>Next, provide a short description of the mechanism that you chose to
-implement to protect against this threat. For interactive protocols, it would be
-helpful to provide a diagram explaining the messages exchanged between
-participating principals (use html &lt;img&gt; tag to import such images). Be
-sure to explain any cryptographic choices that your group makes: What types of
-algorithms, modes of operation, and/or key lengths did you choose? Why? If
-shared keys are needed, how are they exchanged?</p>  
--->
 
 <p>
 To prevent the issues explained above, we will use a public key authentication 
@@ -241,15 +228,6 @@ that the host they are connected to is the real file server.
     <li>C checks for correct <em>r</em></li>
 	<li>Repeat steps 3-7 2 more times</li>
 </ol>
-
-<!--
-<p>Finally, provide a short argument addressing why your proposed mechanism
-sufficiently addresses this particular threat. This argument should address the
-correctness of your approach, as well as its overall security. For example, if
-your mechanism involves a key agreement or key exchange protocol, you should
-argue that both parties agree on the same key (correctnes) and that no other
-party can figure out the key (security).</p>
--->
 
 <p>
 The only point of weakness in this mechanism is that a different secure channel is 
@@ -318,15 +296,26 @@ be trusted, as this is covered in T3 and is assumed to have already occurred.</p
       <h2>Discussion</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p>Conclude with a paragraph or two discussing the interplay between your
-proposed mechanisms, and commenting on the design process that your group
-followed. Did you discuss other ideas that didnâ€™t pan out before settling on the
-above-documented approach? Did you end up designing a really interesting
-protocol suite that addresses multiple threats at once? Use this space to show
-off your hard work!</p>
+<p>Our protocol to prevent token modification is a good example of the
+interplay between our mechanisms. First, the client would have to authenticate
+with the group server in order to obtain a token. This involves the entire
+protocol in T1. Then, the client would have to authenticate the
+file server using the process outlined in T3. Next, the client and 
+file server would need to agree on a symmetric key, which is shown in T4.
+Finally, the client can decrypt the token using the symmetric key from the
+group server, encrypt it using the symmetric key from the file server, and
+send the encrypted token and the signature to the file server.</p>
 
-<p>If your group did any extra credit, please discuss that in this section, as
-well.</p>
+<p>Before beginning this writeup, our group met up and discussed solutions to
+all the threats. Once we thought we had a solution, we tried to identify assumptions we were making
+and attacks that could break the protocol. The issue with this is that we were not only
+considering passive adversaries. During these discussions, we created a much
+stronger protocol to prevent unauthorized token issuance than the protocol used in T1.
+It involved salting and hashing passwords to protect the password database and 
+RSA signatures to prove that the AES key came from the group server, not a man
+in the middle. After writing up this protocol, we realized that we were overthinking
+this portion of the project. We continued to discuss, making sure that we were
+not protecting against threats that don't exist in the current model.</p>
 
 <!-- END CHANGES HERE -->
     </section>
