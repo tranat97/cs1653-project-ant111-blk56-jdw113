@@ -278,8 +278,22 @@ about sending plaintext.
       <h2>Threat T4: Information Leakage via Passive Monitoring</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p> For creating a shared key between fileserver and client, assuming the process in T3
-has already happened.<p>
+<p>In the current state of the project, none of the communication between the client and server applications 
+is encrypted. This means that all communication can be observed through passive monitoring. This 
+is problematic because the client's actions and information could be stolen by intercepting the 
+communication between the client and server. This would give the attacker access to file contents, 
+UserTokens, as well as a log of actions performed by the client. With this information, the entire 
+system would be compromised because an attacker could do any action they wish by simply listening to the 
+communications between client and servers.</p>
+
+<p>Our solution to the problem is to encrypt all communication done between the client and servers.  
+We will use hybrid cryptography to set up secure communication between the client and servers.  
+This will be done using 4096-bit RSA key pairs and a 256-bit AES key. These key lengths will provide a 
+level of security that is infeasible to break, thus ensuring secure communication. The protocol for
+exchanging the symmetric key between the client and group server was shown in T1. After authenticating
+the file server, a similar protocol will be used to exchange a separate symmetric key
+between the client and the file server, shown in the diagram below:</p>
+
 <ul>
     <li><em>k</em><sub>c</sub>: Client's public key</li>
     <li><em>k</em><sub>c</sub><sup>-1</sup>: Client's private key</li>
@@ -291,26 +305,12 @@ has already happened.<p>
     <li>C decrypts <em>k</em><sub>AES</sub> with <em>k</em><sub>c</sub><sup>-1</sup></li>
 </ol>
 
-<p>Begin this section by describing threat T4. This may include describing
-examples of the threat being exploited by an adversary, a short discussion of
-why this threat is problematic and needs to be addressed, and/or diagrams
-showing how the threat might manifest in your groupâ€™s insecure
-implementation.</p>
-
-<p>Next, provide a short description of the mechanism that you chose to
-implement to protect against this threat. For interactive protocols, it would be
-helpful to provide a diagram explaining the messages exchanged between
-participating principals (use html &lt;img&gt; tag to import such images). Be
-sure to explain any cryptographic choices that your group makes: What types of
-algorithms, modes of operation, and/or key lengths did you choose? Why? If
-shared keys are needed, how are they exchanged?</p>
-
-<p>Finally, provide a short argument addressing why your proposed mechanism
-sufficiently addresses this particular threat. This argument should address the
-correctness of your approach, as well as its overall security. For example, if
-your mechanism involves a key agreement or key exchange protocol, you should
-argue that both parties agree on the same key (correctnes) and that no other
-party can figure out the key (security).</p>
+<p>This mechanism for preventing information leakage via passive monitoring ensures that all 
+communication is secure. Both the client and each server agree on a shared AES key.  
+They establish this key in a secure way by encrypting their communication with RSA.  
+The key sizes are also large enough that it is infeasible to decrypt any communication 
+stolen through passive monitoring. Finally, this mechanism assumes that the file server can
+be trusted, as this is covered in T3 and is assumed to have already occurred.</p>
 
 <!-- END CHANGES HERE -->
     </section>
