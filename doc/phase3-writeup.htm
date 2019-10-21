@@ -278,23 +278,22 @@ about sending plaintext.
       <h2>Threat T4: Information Leakage via Passive Monitoring</h2>
 <!-- BEGIN CHANGES HERE -->
 
-
-<p>In the current state of the project, all communication between the client and server applications 
-is unencrypted.  This means that any communication can be observed through passive monitoring.  This 
-is problematic because the clients actions and information could be stolen by intercepting the 
-communication between the client and server.  This would give the attacker access to file contents, 
-UserTokens, as well as a log of actions performed by the client.  With this information, the entire 
+<p>In the current state of the project, none of the communication between the client and server applications 
+is encrypted. This means that all communication can be observed through passive monitoring. This 
+is problematic because the client's actions and information could be stolen by intercepting the 
+communication between the client and server. This would give the attacker access to file contents, 
+UserTokens, as well as a log of actions performed by the client. With this information, the entire 
 system would be compromised because an attacker could do any action they wish by simply listening to the 
 communications between client and servers.</p>
 
 <p>Our solution to the problem is to encrypt all communication done between the client and servers.  
 We will use hybrid cryptography to set up secure communication between the client and servers.  
-This will be done using 4096-bit RSA key pairs and a 256-bit AES key.  These key lengths will provide a 
-level of security that is impossible to break, thus ensuring secure communication.  The exchange of the 
-AES shared key will be done using the  RSA key pairs according to the diagram below:</p>
+This will be done using 4096-bit RSA key pairs and a 256-bit AES key. These key lengths will provide a 
+level of security that is infeasible to break, thus ensuring secure communication. The protocol for
+exchanging the symmetric key between the client and group server was shown in T1. After authenticating
+the file server, a similar protocol will be used to exchange a separate symmetric key
+between the client and the file server, shown in the diagram below:</p>
 
-<p> For creating a shared key between fileserver and client, assuming the process in T3
-has already happened.<p>
 <ul>
     <li><em>k</em><sub>c</sub>: Client's public key</li>
     <li><em>k</em><sub>c</sub><sup>-1</sup>: Client's private key</li>
@@ -307,7 +306,7 @@ has already happened.<p>
 </ol>
 
 <p>This mechanism for preventing information leakage via passive monitoring ensures that all 
-communication is secure.  Both the client and server agree on the same shared AES key.  
+communication is secure. Both the client and each server agree on a shared AES key.  
 They establish this key in a secure way by encrypting their communication with RSA.  
 The key sizes are also large enough that it is infeasible to decrypt any communication 
 stolen through passive monitoring. Finally, this mechanism assumes that the file server can
