@@ -188,7 +188,7 @@ For every subsequent connection, if the hash value of the public key sent from t
 	<li>C generates r</li>
 	<li>C generates <em>k</em><sub>AES</sub></li>
     <li>C &rarr; FS: { <em>r</em> || <em>k</em><sub>AES</sub> }<em>k</em><sub>fs</sub></li>
-	<li>FS decrypts { <em>r</em> }<em>k</em><sub>fs</sub> with <em>k</em><sub>fs</sub><sup>-1</sup></li>
+	<li>FS decrypts { <em>r</em> || <em>k</em><sub>AES</sub> }<em>k</em><sub>fs</sub> with <em>k</em><sub>fs</sub><sup>-1</sup></li>
 	<li>FS &rarr; C: { <em>r</em> }<em>k</em><sub>AES</sub></li>
 	<li>C decrypts { <em>r</em> }<em>k</em><sub>AES</sub> with <em>k</em><sub>AES</sub></li>
     <li>C checks for correct <em>r</em></li>
