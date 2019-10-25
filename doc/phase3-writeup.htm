@@ -95,7 +95,7 @@ valid attack in our current threat model, as we are only considering passive adv
     <li>C &rarr; GS: { username || password }<em>k</em><sub>AES</sub>
 	<li>GS decrypts username and password with <em>k</em><sub>AES</sub></li>
     <li>GS checks password against user's recorded password</li>
-    <li>GS &rarr; C: { token }<em>k</em><sub>AES</sub>, { H(token) }<em>k</em><sub>gs</sub><sup>-1</sup></li>
+	<li>GS &rarr; C: { token || { H(token.toString()) }<em>k</em><sub>gs</sub><sup>-1</sup> }<em>k</em><sub>AES</sub></li>
     <li>C decrypts token with <em>k</em><sub>AES</sub></li>
 </ol>
 
@@ -134,13 +134,17 @@ assume that the clients are not trustworthy.</p>
 The group server will generate a 4096-bit RSA key pair the first time
 it is started. Anytime the group server sends an encrypted token to a
 client, the group server will also send a digital signature of the hash
-of the token. Hashing the token before signing allows it to be transmitted
+of the token's toString output. Hashing the toString before signing allows it to be transmitted
 in plaintext and puts an upper limit on the size for RSA encryption.
-The token will be hashed using SHA-256, we need to use a cryptographically
+The token's toString output will be hashed using SHA-256, we need to use a cryptographically
 strong hashing algorithm so that it is infeasible to forge a token that has
-an identical hash to genuine token. The UserToken interface will be extended
-so that it can verify that a token can be trusted. This will be done by
-verifying the signature using the group server's public key.</p>
+an identical hash to genuine token. The token's toString method will return a unique
+string representation of the token in the following format:
+issuer:subject:group<sub>1</sub>:[...]:group<sub>n</sub>. This toString method could be
+abused if we allowed the ':' character to be used in group server names, usernames, or group
+names, so it will have to be banned from being used for those identifiers.
+The UserToken interface will be extended so that it can verify that a token can be trusted.
+This will be done by verifying the signature using the group server's public key.</p>
 
 <p>For a file server to be able to verify a token, the file server must
 have a list of trusted group server public keys. The file server cannot
@@ -157,8 +161,8 @@ If no trusted keys match, then the file server should reject the token.</p>
       different from key shared between client and group server</li>
 </ul>
 <ol>
-    <li>C &rarr; FS: { token }<em>k</em><sub>AES</sub>, { H(token) }<em>k</em><sub>gs</sub><sup>-1</sup></li>
-	<li>FS attempts to verify { H(token) }<em>k</em><sub>gs</sub><sup>-1</sup> using list of trusted group server public keys</li>
+	<li>C &rarr; FS: { token || { H(token.toString()) }<em>k</em><sub>gs</sub><sup>-1</sup> }<em>k</em><sub>AES</sub></li>
+	<li>FS attempts to verify { H(token.toString()) }<em>k</em><sub>gs</sub><sup>-1</sup> using list of trusted group server public keys</li>
 	<li>If FS successfully verifies signature, then FS accepts the token</li>
 </ol>
 
