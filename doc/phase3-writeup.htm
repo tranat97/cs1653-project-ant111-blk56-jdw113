@@ -152,6 +152,10 @@ rely on the client to send the group server's public key along with the
 signature, because the client could generate their own signature and send
 their own public key. Therefore, the file server admin will have to create
 a file of trusted group server public keys by contacting group server admins.
+Our file system is intended for situations where file and group servers admins 
+can easily communicate offline, thus making our public key exchange protocol acceptable.
+An example of such an environment is an office, where group and file server admins would most likely
+be in the same building and could easily exchange public keys.
 These trusted keys will then be used to verify the signature of the token.
 If no trusted keys match, then the file server should reject the token.</p>
 
@@ -265,30 +269,28 @@ system would be compromised because an attacker could do any action they wish by
 communications between client and servers.</p>
 
 <p>Our solution to the problem is to encrypt all communication done between the client and servers.  
-We will use hybrid cryptography to set up secure communication between the client and servers.  
-This will be done using 4096-bit RSA key pairs and a 256-bit AES key. These key lengths will provide a 
+We will use symmetric key cryptography to encrypt communication between the client and servers.  
+This will be done using a 256-bit AES key. These key lengths will provide a 
 level of security that is infeasible to break, thus ensuring secure communication. The protocol for
-exchanging the symmetric key between the client and group server was shown in T1. After authenticating
-the file server, a similar protocol will be used to exchange a separate symmetric key
-between the client and the file server, shown in the diagram below:</p>
+exchanging the symmetric key between the client and file server was shown in T3. Below is a diagram showing
+how messages are exchanged between the client and file servers:</p>
 
 <ul>
-    <li><em>k</em><sub>c</sub>: Client's public key</li>
-    <li><em>k</em><sub>c</sub><sup>-1</sup>: Client's private key</li>
+    <li><em>k</em><sub>cf</sub>: Client and File Server's Shared AES Key</li>
+    <li>M1,M2: Messages</li>
 </ul>
 <ol>
-    <li>C &rarr; FS: <em>k</em><sub>c</sub></li>
-    <li>FS generates a 256-bit AES key <em>k</em><sub>AES</sub></li>
-	<li>FS &rarr; C: { <em>k</em><sub>AES</sub> }<em>k</em><sub>c</sub></li>
-    <li>C decrypts <em>k</em><sub>AES</sub> with <em>k</em><sub>c</sub><sup>-1</sup></li>
+    <li>C &rarr; FS:{ M1 }<em>k</em><sub>cf</sub></li>
+    <li>FS decrypts M1 with <em>k</em><sub>cf</sub></li>
+	<li>FS &rarr; C: { M2 }<em>k</em><sub>cf</sub></li>
+    <li>C decrypts M2 with <em>k</em><sub>cf</sub></li>
 </ol>
 
 <p>This mechanism for preventing information leakage via passive monitoring ensures that all 
-communication is secure. Both the client and each server agree on a shared AES key.  
-They establish this key in a secure way by encrypting their communication with RSA.  
-The key sizes are also large enough that it is infeasible to decrypt any communication 
-stolen through passive monitoring. Finally, this mechanism assumes that the file server can
-be trusted, as this is covered in T3 and is assumed to have already occurred.</p>
+communication is secure. Both the client and file server encrypt all their communication with their shared AES key.  
+They establish this key when the client verifies the file server in T3.  
+The key size is large enough that it is infeasible to decrypt any communication 
+stolen through passive monitoring. </p>
 
 <!-- END CHANGES HERE -->
     </section>
