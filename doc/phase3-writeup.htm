@@ -269,7 +269,7 @@ communications between client and servers.</p>
 
 <p>Our solution to the problem is to encrypt all communication done between the client and servers.  
 We will use symmetric key cryptography to encrypt communication between the client and servers.  
-This will be done using a 256-bit AES key. These key lengths will provide a 
+This will be done using a 256-bit AES key in CBC mode. These key lengths will provide a 
 level of security that is infeasible to break, thus ensuring secure communication. The protocol for
 exchanging the symmetric key between the client and file server was shown in T3. Below is a diagram showing
 how messages are exchanged between the client and file servers:</p>
