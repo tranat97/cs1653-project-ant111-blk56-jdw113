@@ -152,6 +152,10 @@ rely on the client to send the group server's public key along with the
 signature, because the client could generate their own signature and send
 their own public key. Therefore, the file server admin will have to create
 a file of trusted group server public keys by contacting group server admins.
+Our file system is intended for situations where file and group servers admins 
+can easily communicate offline, thus making our public key exchange protocol acceptable.
+An example of such an environment is an office, where group and file server admins would most likely
+be in the same building and could easily exchange public keys.
 These trusted keys will then be used to verify the signature of the token.
 If no trusted keys match, then the file server should reject the token.</p>
 
