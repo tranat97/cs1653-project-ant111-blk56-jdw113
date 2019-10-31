@@ -48,5 +48,6 @@ public interface UserToken
      */
     public List<String> getGroups();
 
-	public byte[] toBytes();
+	public void setSignature(byte[] signature);
+	public byte[] getSignature();
 }   //-- end interface UserToken

@@ -13,18 +13,67 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.spec.IvParameterSpec;
+import javax.xml.bind.DatatypeConverter;
+import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ObjectOutputStream;
+import java.io.ObjectInputStream;
 import java.io.FileOutputStream;
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class Crypto
 {
 	public Crypto()
 	{
 		Security.addProvider(new BouncyCastleProvider());
+	}
+
+	/* Returns an envelope with encrypted contents using our format */
+	public Envelope encrypt(Envelope e, Key AESKey)
+	{
+		byte[] IV = generateIV();
+		Envelope result = new Envelope(bytesToHex(encrypt(e.getMessage().getBytes(), IV, AESKey)));
+		result.addObject(Arrays.copyOf(IV, IV.length));
+		for (int i = 0; i < e.getObjContents().size(); i++)
+		{
+			IV[0]++;
+			Object contents = e.getObjContents().get(i);
+			if (contents == null)
+			{
+				result.addObject(null);
+			}
+			else
+			{
+				result.addObject(encrypt(objectToBytes(contents), IV, AESKey));
+			}
+		}
+		return result;
+	}
+
+	/* Returns an envelope with decrypted contents using our format */
+	public Envelope decrypt(Envelope e, Key AESKey)
+	{
+		byte[] IV = (byte[]) e.getObjContents().get(0);
+		Envelope result = new Envelope(new String(decrypt(hexToBytes(e.getMessage()), IV, AESKey)));
+		for (int i = 1; i < e.getObjContents().size(); i++)
+		{
+			IV[0]++;
+			byte[] contents = (byte[]) e.getObjContents().get(i);
+			if (contents == null)
+			{
+				result.addObject(null);
+			}
+			else
+			{
+				result.addObject(bytesToObject(decrypt(contents, IV, AESKey)));
+			}
+		}
+		return result;
 	}
 
 	public byte[] hash(String s)
@@ -42,6 +91,11 @@ public class Crypto
 		}
 	}
 
+	public void sign(PrivateKey privateKey, UserToken token)
+	{
+		token.setSignature(sign(privateKey, token.toString().getBytes()));
+	}
+
 	public byte[] sign(PrivateKey privateKey, byte[] plaintext)
 	{
 		try
@@ -57,6 +111,11 @@ public class Crypto
 			e.printStackTrace();
 			return null;
 		}
+	}
+
+	public boolean verify(PublicKey publicKey, UserToken token)
+	{
+		return verify(publicKey, token.getSignature(), token.toString().getBytes());
 	}
 
 	public boolean verify(PublicKey publicKey, byte[] ciphertext, byte[] plaintext)
@@ -251,5 +310,55 @@ public class Crypto
 			}
 		}
 		return RSAKeys;
+	}
+
+	private byte[] hexToBytes(String hex)
+	{
+		return DatatypeConverter.parseHexBinary(hex);
+	}
+
+	private String bytesToHex(byte[] bytes)
+	{
+		return DatatypeConverter.printHexBinary(bytes);
+	}
+
+	private Object bytesToObject(byte[] bytes)
+	{
+		try
+		{
+			final ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+			final ObjectInputStream ois = new ObjectInputStream(bis);
+			final Object o = ois.readObject();
+			ois.close();
+			bis.close();
+			return o;
+		}
+		catch (Exception e)
+		{
+			System.err.println("Failed to turn bytes into token");
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private byte[] objectToBytes(Object o)
+	{
+		try
+		{
+			final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			final ObjectOutputStream oos = new ObjectOutputStream(bos);
+			oos.writeObject(o);
+			oos.flush();
+			final byte[] bytes = bos.toByteArray();
+			oos.close();
+			bos.close();
+			return bytes;
+		}
+		catch (Exception e)
+		{
+			System.err.println("Failed to turn token into bytes");
+			e.printStackTrace();
+			return null;
+		}
 	}
 }

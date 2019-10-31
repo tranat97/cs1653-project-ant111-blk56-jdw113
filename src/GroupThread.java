@@ -13,6 +13,9 @@ public class GroupThread extends Thread {
     private GroupServer my_gs;
 	private Key clientPublicKey;
 	private Key AESKey;
+	private Crypto crypto;
+	private ObjectInputStream input;
+	private ObjectOutputStream output;
 
     public GroupThread(Socket _socket, GroupServer _gs) {
         socket = _socket;
@@ -25,8 +28,9 @@ public class GroupThread extends Thread {
         try {
             //Announces connection and opens object streams
             System.out.println("*** New connection from " + socket.getInetAddress() + ":" + socket.getPort() + "***");
-            final ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
-            final ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
+            input = new ObjectInputStream(socket.getInputStream());
+            output = new ObjectOutputStream(socket.getOutputStream());
+			crypto = new Crypto();
             Envelope message, response;
 
 			// handshake
@@ -45,12 +49,17 @@ public class GroupThread extends Thread {
 			}
 			clientPublicKey = (Key) message.getObjContents().get(0);
 			// generating and sending AES key
-			AESKey = my_gs.crypto.generateAESKey();
+			AESKey = crypto.generateAESKey();
 			response = new Envelope("AESKEY");
-			response.addObject(my_gs.crypto.encryptAESKey(AESKey, clientPublicKey));
+			response.addObject(crypto.encryptAESKey(AESKey, clientPublicKey));
 			output.writeObject(response);
+			/* After this point, all envelope sending and receiving will
+			 * be done through send and recieve methods. These methods
+			 * encrypt and decrypt envelopes before sending.
+			 * All envelopes sent must only have byte[]s as objects
+			 * All envelopes received will only have byte[]s as objects */
             do {
-                message = (Envelope) input.readObject();
+                message = receive();
                 System.out.println("Request received: " + message.getMessage());
 
                 if (message.getMessage().equals("GET"))//Client wants a token
@@ -59,37 +68,30 @@ public class GroupThread extends Thread {
 					{
 						response = new Envelope("FAIL");
 						response.addObject(null);
-						output.writeObject(response);
+						send(response);
 					}
 					else
 					{
-						byte[] IV = (byte []) message.getObjContents().get(0);
-						byte[] encryptedCredentials= (byte []) message.getObjContents().get(1); 
-						if (IV == null || encryptedCredentials == null) {
+						String username = (String) message.getObjContents().get(0);
+						String password = (String) message.getObjContents().get(1);
+
+						if (username == null || password == null) {
 							response = new Envelope("FAIL");
 							response.addObject(null);
-							output.writeObject(response);
+							send(response);
 						} else {
-							String credentials[] = new String(my_gs.crypto.decrypt(encryptedCredentials, IV, AESKey)).split(":", 2);
-							if (my_gs.userList.checkPassword(credentials[0], credentials[1])) {
-								UserToken yourToken = createToken("admin"); //Create a token
-								byte[] hash = my_gs.crypto.hash(yourToken.toString());
-								IV = my_gs.crypto.generateIV();
-
+							if (my_gs.userList.checkPassword(username, password)) {
+								UserToken yourToken = createToken(username); //Create a token
+								crypto.sign(my_gs.RSAKeys.getPrivate(), yourToken);
+								
 								//Respond to the client. On error, the client will receive a null token
 								response = new Envelope("OK");
-								response.addObject(IV);
-								response.addObject(my_gs.crypto.encrypt(yourToken.toBytes(), IV, AESKey));
-								//IV[0]++;
-								// I would like to modify the IV by a constant here,
-								// but it changes the IV previously added to response
-								// we need to copy it and then increment it
-								response.addObject(my_gs.crypto.encrypt(my_gs.crypto.sign(my_gs.RSAKeys.getPrivate(), yourToken.toString().getBytes()), IV, AESKey));
-								output.writeObject(response);
+								response.addObject(yourToken);
+								send(response);
 							} else {
 								response = new Envelope("FAIL");
 								response.addObject(null);
-								output.writeObject(response);
+								send(response);
 							}
 						}
 					}
@@ -111,10 +113,9 @@ public class GroupThread extends Thread {
                         }
                     }
 
-                    output.writeObject(response);
+                    send(response);
                 } else if (message.getMessage().equals("DUSER")) //Client wants to delete a user
                 {
-
                     if (message.getObjContents().size() < 2) {
                         response = new Envelope("FAIL");
                     } else {
@@ -131,7 +132,7 @@ public class GroupThread extends Thread {
                         }
                     }
 
-                    output.writeObject(response);
+                    send(response);
                 } else if (message.getMessage().equals("CGROUP")) //Client wants to create a group
                 {
                     //check if envelope has correct amount of information
@@ -153,7 +154,7 @@ public class GroupThread extends Thread {
                             }
                         }
                     }
-                    output.writeObject(response);
+                    send(response);
                 } else if (message.getMessage().equals("DGROUP")) //Client wants to delete a group
                 {
                     //check if envelope has correct amount of information
@@ -177,7 +178,7 @@ public class GroupThread extends Thread {
                             }
                         }
                     }
-                    output.writeObject(response);
+                    send(response);
                 } else if (message.getMessage().equals("LMEMBERS")) //Client wants a list of members in a group
                 {
                     //check if envelope has correct amount of information
@@ -198,7 +199,7 @@ public class GroupThread extends Thread {
                             }
                         }
                     }
-                    output.writeObject(response);
+                    send(response);
                 } else if (message.getMessage().equals("AUSERTOGROUP")) //Client wants to add user to a group
                 {
                     if (message.getObjContents().size() < 3) {
@@ -219,7 +220,7 @@ public class GroupThread extends Thread {
                             }
                         }
                     }
-                    output.writeObject(response);
+                    send(response);
                 } else if (message.getMessage().equals("RUSERFROMGROUP")) //Client wants to remove user from a group
                 {
                     if (message.getObjContents().size() < 3) {
@@ -250,14 +251,14 @@ public class GroupThread extends Thread {
                             }
                         }
                     }
-                    output.writeObject(response);
+                    send(response);
                 } else if (message.getMessage().equals("DISCONNECT")) //Client wants to disconnect
                 {
                     socket.close(); //Close the socket
                     proceed = false; //End this communication loop
                 } else {
                     response = new Envelope("FAIL"); //Server does not understand client request
-                    output.writeObject(response);
+                    send(response);
                 }
             } while (proceed);
         } catch (Exception e) {
@@ -364,4 +365,14 @@ public class GroupThread extends Thread {
         }
         return true;
     }
+
+	private Envelope receive() throws Exception 
+	{
+		return crypto.decrypt((Envelope) input.readObject(), AESKey);
+	}
+
+	private void send(Envelope e) throws Exception
+	{
+		output.writeObject(crypto.encrypt(e, AESKey));
+	}
 }

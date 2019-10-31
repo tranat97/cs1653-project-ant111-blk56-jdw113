@@ -28,6 +28,10 @@ import java.util.*;
 
 		public synchronized boolean checkPassword(String username, String password)
 		{
+			if (!checkUser(username))
+			{
+				return false;
+			}
 			return list.get(username).checkPassword(password);
 		}
 		
