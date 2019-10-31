@@ -5,11 +5,14 @@ import java.lang.Thread;
 import java.net.Socket;
 import java.io.*;
 import java.util.*;
+import java.security.Key;
 
 public class GroupThread extends Thread {
 
     private final Socket socket;
     private GroupServer my_gs;
+	private Key clientPublicKey;
+	private Key AESKey;
 
     public GroupThread(Socket _socket, GroupServer _gs) {
         socket = _socket;
@@ -24,27 +27,72 @@ public class GroupThread extends Thread {
             System.out.println("*** New connection from " + socket.getInetAddress() + ":" + socket.getPort() + "***");
             final ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
             final ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
+            Envelope message, response;
 
+			// handshake
+			// sending our public key
+			response = new Envelope("PUBKEY");
+			response.addObject(my_gs.RSAKeys.getPublic());
+			output.writeObject(response);
+			// recieving their public key
+			message = (Envelope) input.readObject();
+			if (!message.getMessage().equals("PUBKEY") || message.getObjContents().size() != 1)
+			{
+				response = new Envelope("FAIL");
+				response.addObject(null);
+				output.writeObject(response);
+				return;
+			}
+			clientPublicKey = (Key) message.getObjContents().get(0);
+			// generating and sending AES key
+			AESKey = my_gs.crypto.generateAESKey();
+			response = new Envelope("AESKEY");
+			response.addObject(my_gs.crypto.encryptAESKey(AESKey, clientPublicKey));
+			output.writeObject(response);
             do {
-                Envelope message = (Envelope) input.readObject();
+                message = (Envelope) input.readObject();
                 System.out.println("Request received: " + message.getMessage());
-                Envelope response;
 
                 if (message.getMessage().equals("GET"))//Client wants a token
                 {
-                    String username = (String) message.getObjContents().get(0); //Get the username
-                    if (username == null) {
-                        response = new Envelope("FAIL");
-                        response.addObject(null);
-                        output.writeObject(response);
-                    } else {
-                        UserToken yourToken = createToken(username); //Create a token
+					if (message.getObjContents().size() != 2)
+					{
+						response = new Envelope("FAIL");
+						response.addObject(null);
+						output.writeObject(response);
+					}
+					else
+					{
+						byte[] IV = (byte []) message.getObjContents().get(0);
+						byte[] encryptedCredentials= (byte []) message.getObjContents().get(1); 
+						if (IV == null || encryptedCredentials == null) {
+							response = new Envelope("FAIL");
+							response.addObject(null);
+							output.writeObject(response);
+						} else {
+							String credentials[] = new String(my_gs.crypto.decrypt(encryptedCredentials, IV, AESKey)).split(":", 2);
+							if (my_gs.userList.checkPassword(credentials[0], credentials[1])) {
+								UserToken yourToken = createToken("admin"); //Create a token
+								byte[] hash = my_gs.crypto.hash(yourToken.toString());
+								IV = my_gs.crypto.generateIV();
 
-                        //Respond to the client. On error, the client will receive a null token
-                        response = new Envelope("OK");
-                        response.addObject(yourToken);
-                        output.writeObject(response);
-                    }
+								//Respond to the client. On error, the client will receive a null token
+								response = new Envelope("OK");
+								response.addObject(IV);
+								response.addObject(my_gs.crypto.encrypt(yourToken.toBytes(), IV, AESKey));
+								//IV[0]++;
+								// I would like to modify the IV by a constant here,
+								// but it changes the IV previously added to response
+								// we need to copy it and then increment it
+								response.addObject(my_gs.crypto.encrypt(my_gs.crypto.sign(my_gs.RSAKeys.getPrivate(), yourToken.toString().getBytes()), IV, AESKey));
+								output.writeObject(response);
+							} else {
+								response = new Envelope("FAIL");
+								response.addObject(null);
+								output.writeObject(response);
+							}
+						}
+					}
                 } else if (message.getMessage().equals("CUSER")) //Client wants to create a user
                 {
                     if (message.getObjContents().size() < 2) {
@@ -54,9 +102,10 @@ public class GroupThread extends Thread {
 
                         if (message.getObjContents().get(0) != null && message.getObjContents().get(1) != null) {
                             String username = (String) message.getObjContents().get(0); //Extract the username
-                            UserToken yourToken = (UserToken) message.getObjContents().get(1); //Extract the token
+							String password = (String) message.getObjContents().get(1);
+                            UserToken yourToken = (UserToken) message.getObjContents().get(2); //Extract the token
 
-                            if (createUser(username, yourToken)) {
+                            if (createUser(username, password, yourToken)) {
                                 response = new Envelope("OK"); //Success
                             }
                         }
@@ -230,7 +279,7 @@ public class GroupThread extends Thread {
     }
 
     //Method to create a user
-    private boolean createUser(String username, UserToken yourToken) {
+    private boolean createUser(String username, String password, UserToken yourToken) {
         String requester = yourToken.getSubject();
 
         //Check if requester exists
@@ -243,7 +292,7 @@ public class GroupThread extends Thread {
                 if (my_gs.userList.checkUser(username)) {
                     return false; //User already exists
                 } else {
-                    my_gs.userList.addUser(username);
+                    my_gs.userList.addUser(username, password);
                     return true;
                 }
             } else {

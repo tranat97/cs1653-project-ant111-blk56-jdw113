@@ -48,4 +48,5 @@ public interface UserToken
      */
     public List<String> getGroups();
 
+	public byte[] toBytes();
 }   //-- end interface UserToken

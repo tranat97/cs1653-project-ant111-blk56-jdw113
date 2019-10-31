@@ -3,17 +3,56 @@
 import java.util.ArrayList;
 import java.util.List;
 import java.io.ObjectInputStream;
+import java.security.PublicKey;
 
 public class GroupClient extends Client implements GroupClientInterface {
 
-    public UserToken getToken(String username) {
+	public GroupClient()
+	{
+		crypto = new Crypto();
+	}
+	
+	public boolean handshake() {
+		try {
+			Envelope message = null, response = null;
+			// Receiving server's public key
+			response = (Envelope) input.readObject();
+			if (!response.getMessage().equals("PUBKEY") || response.getObjContents().size() != 1)
+			{
+				return false;
+			}
+			serverPublicKey = (PublicKey) response.getObjContents().get(0);
+			// Sending client's public key
+			message = new Envelope("PUBKEY");
+			message.addObject(RSAKeys.getPublic());
+			output.writeObject(message);
+			// Receiving AES key
+			response = (Envelope) input.readObject();
+			if (!response.getMessage().equals("AESKEY") || response.getObjContents().size() != 1)
+			{
+				return false;
+			}
+			AESKey = crypto.decryptAESKey((byte [])response.getObjContents().get(0), RSAKeys.getPrivate());
+		}
+		catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+            e.printStackTrace(System.err);
+            return false;
+		}
+		return true;
+	}
+
+    public UserToken getToken(String username, String password) {
         try {
             UserToken token = null;
             Envelope message = null, response = null;
 
+			byte credentials[] = (username + ":" + password).getBytes();
+			byte IV[] = crypto.generateIV();
             //Tell the server to return a token.
             message = new Envelope("GET");
-            message.addObject(username); //Add user name string
+			message.addObject(IV);
+            message.addObject(crypto.encrypt(credentials, IV, AESKey));
             output.writeObject(message);
 
             //Get the response from the server
@@ -21,13 +60,20 @@ public class GroupClient extends Client implements GroupClientInterface {
 
             //Successful response
             if (response.getMessage().equals("OK")) {
-                //If there is a token in the Envelope, return it 
                 ArrayList<Object> temp = null;
                 temp = response.getObjContents();
 
-                if (temp.size() == 1) {
-                    token = (UserToken) temp.get(0);
-                    return token;
+                if (temp.size() == 3) {
+					IV = (byte[]) temp.get(0);
+					byte[] encryptedToken = (byte[]) temp.get(1);
+					byte[] encryptedSig = (byte[]) temp.get(2);
+                    token = new Token(crypto.decrypt(encryptedToken, IV, AESKey));
+					//IV[0]++;
+					byte[] sig = crypto.decrypt(encryptedSig, IV, AESKey);
+					if (crypto.verify(serverPublicKey, sig, token.toString().getBytes()))
+					{
+						return token;
+					}
                 }
             }
 
@@ -40,12 +86,13 @@ public class GroupClient extends Client implements GroupClientInterface {
 
     }
 
-    public boolean createUser(String username, UserToken token) {
+    public boolean createUser(String username, String password, UserToken token) {
         try {
             Envelope message = null, response = null;
             //Tell the server to create a user
             message = new Envelope("CUSER");
             message.addObject(username); //Add user name string
+			message.addObject(password);
             message.addObject(token); //Add the requester's token
             output.writeObject(message);
 
