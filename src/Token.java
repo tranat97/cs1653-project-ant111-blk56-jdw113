@@ -11,6 +11,7 @@ public class Token implements UserToken, Serializable
 	private String issuer;
 	private String subject;
 	private List<String> groups;
+	private byte[] signature;
 
 	public Token(String issuer, String subject, List<String> groups)
 	{
@@ -31,6 +32,7 @@ public class Token implements UserToken, Serializable
 			this.issuer = t.getIssuer();
 			this.subject = t.getSubject();
 			this.groups = t.getGroups();
+			this.signature = t.getSignature();
 		}
 		catch (Exception e)
 		{
@@ -84,9 +86,19 @@ public class Token implements UserToken, Serializable
 		return new ArrayList<String>(groups);
 	}
 
+	public void setSignature(byte[] signature)
+	{
+		this.signature = signature;
+	}
+
+	public byte[] getSignature()
+	{
+		return this.signature;
+	}
+
 	public String toString()
 	{
-		StringBuilder sb = new StringBuilder();
+		final StringBuilder sb = new StringBuilder();
 		sb.append(issuer + ":" + subject + ":");
 		for (String s : groups)
 		{

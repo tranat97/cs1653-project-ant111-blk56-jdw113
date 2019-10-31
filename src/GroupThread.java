@@ -13,6 +13,9 @@ public class GroupThread extends Thread {
     private GroupServer my_gs;
 	private Key clientPublicKey;
 	private Key AESKey;
+	private Crypto crypto;
+	private ObjectInputStream input;
+	private ObjectOutputStream output;
 
     public GroupThread(Socket _socket, GroupServer _gs) {
         socket = _socket;
@@ -25,8 +28,9 @@ public class GroupThread extends Thread {
         try {
             //Announces connection and opens object streams
             System.out.println("*** New connection from " + socket.getInetAddress() + ":" + socket.getPort() + "***");
-            final ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
-            final ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
+            input = new ObjectInputStream(socket.getInputStream());
+            output = new ObjectOutputStream(socket.getOutputStream());
+			crypto = new Crypto();
             Envelope message, response;
 
 			// handshake
@@ -45,51 +49,47 @@ public class GroupThread extends Thread {
 			}
 			clientPublicKey = (Key) message.getObjContents().get(0);
 			// generating and sending AES key
-			AESKey = my_gs.crypto.generateAESKey();
+			AESKey = crypto.generateAESKey();
 			response = new Envelope("AESKEY");
-			response.addObject(my_gs.crypto.encryptAESKey(AESKey, clientPublicKey));
+			response.addObject(crypto.encryptAESKey(AESKey, clientPublicKey));
 			output.writeObject(response);
+			/* After this point, all envelope sending and receiving will
+			 * be done through send and recieve methods. These methods
+			 * encrypt and decrypt envelopes before sending.
+			 * All envelopes sent must only have byte[]s as objects
+			 * All envelopes received will only have byte[]s as objects */
             do {
-                message = (Envelope) input.readObject();
+                message = receive();
                 System.out.println("Request received: " + message.getMessage());
 
                 if (message.getMessage().equals("GET"))//Client wants a token
                 {
-					if (message.getObjContents().size() != 2)
+					if (message.getObjContents().size() != 1)
 					{
 						response = new Envelope("FAIL");
 						response.addObject(null);
-						output.writeObject(response);
+						send(response);
 					}
 					else
 					{
-						byte[] IV = (byte []) message.getObjContents().get(0);
-						byte[] encryptedCredentials= (byte []) message.getObjContents().get(1); 
-						if (IV == null || encryptedCredentials == null) {
+						String credentials[] = new String((byte[]) message.getObjContents().get(0)).split(":", 2);
+						if (credentials == null || credentials.length != 2) {
 							response = new Envelope("FAIL");
 							response.addObject(null);
-							output.writeObject(response);
+							send(response);
 						} else {
-							String credentials[] = new String(my_gs.crypto.decrypt(encryptedCredentials, IV, AESKey)).split(":", 2);
 							if (my_gs.userList.checkPassword(credentials[0], credentials[1])) {
 								UserToken yourToken = createToken("admin"); //Create a token
-								byte[] hash = my_gs.crypto.hash(yourToken.toString());
-								IV = my_gs.crypto.generateIV();
-
+								crypto.sign(my_gs.RSAKeys.getPrivate(), yourToken);
+								
 								//Respond to the client. On error, the client will receive a null token
 								response = new Envelope("OK");
-								response.addObject(IV);
-								response.addObject(my_gs.crypto.encrypt(yourToken.toBytes(), IV, AESKey));
-								//IV[0]++;
-								// I would like to modify the IV by a constant here,
-								// but it changes the IV previously added to response
-								// we need to copy it and then increment it
-								response.addObject(my_gs.crypto.encrypt(my_gs.crypto.sign(my_gs.RSAKeys.getPrivate(), yourToken.toString().getBytes()), IV, AESKey));
-								output.writeObject(response);
+								response.addObject(yourToken.toBytes());
+								send(response);
 							} else {
 								response = new Envelope("FAIL");
 								response.addObject(null);
-								output.writeObject(response);
+								send(response);
 							}
 						}
 					}
@@ -364,4 +364,14 @@ public class GroupThread extends Thread {
         }
         return true;
     }
+
+	private Envelope receive() throws Exception 
+	{
+		return crypto.decrypt((Envelope) input.readObject(), AESKey);
+	}
+
+	private void send(Envelope e) throws Exception
+	{
+		output.writeObject(crypto.encrypt(e, AESKey));
+	}
 }

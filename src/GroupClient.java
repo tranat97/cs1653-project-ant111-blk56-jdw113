@@ -48,32 +48,26 @@ public class GroupClient extends Client implements GroupClientInterface {
             Envelope message = null, response = null;
 
 			byte credentials[] = (username + ":" + password).getBytes();
-			byte IV[] = crypto.generateIV();
             //Tell the server to return a token.
             message = new Envelope("GET");
-			message.addObject(IV);
-            message.addObject(crypto.encrypt(credentials, IV, AESKey));
-            output.writeObject(message);
+            message.addObject(credentials);
+			send(message);
 
             //Get the response from the server
-            response = (Envelope) input.readObject();
+            response = receive();
 
             //Successful response
             if (response.getMessage().equals("OK")) {
                 ArrayList<Object> temp = null;
                 temp = response.getObjContents();
 
-                if (temp.size() == 3) {
-					IV = (byte[]) temp.get(0);
-					byte[] encryptedToken = (byte[]) temp.get(1);
-					byte[] encryptedSig = (byte[]) temp.get(2);
-                    token = new Token(crypto.decrypt(encryptedToken, IV, AESKey));
-					//IV[0]++;
-					byte[] sig = crypto.decrypt(encryptedSig, IV, AESKey);
-					if (crypto.verify(serverPublicKey, sig, token.toString().getBytes()))
+                if (temp.size() == 1) {
+                    token = new Token((byte[])temp.get(0));
+					if (crypto.verify(serverPublicKey, token))
 					{
 						return token;
 					}
+					System.err.println("Token signature verification failed");
                 }
             }
 
@@ -259,5 +253,15 @@ public class GroupClient extends Client implements GroupClientInterface {
             return null;
         }
     }
+
+	private Envelope receive() throws Exception
+	{
+		return crypto.decrypt((Envelope) input.readObject(), AESKey);
+	}
+
+	private void send(Envelope e) throws Exception
+	{
+		output.writeObject(crypto.encrypt(e, AESKey));
+	}
 
 }
