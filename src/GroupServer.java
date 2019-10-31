@@ -13,12 +13,15 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.io.*;
 import java.util.*;
+import java.security.KeyPair;
 
 
 public class GroupServer extends Server {
 
 	public static final int SERVER_PORT = 8765;
+	public Crypto crypto;
 	public UserList userList;
+	public KeyPair RSAKeys;
 
 	public GroupServer() {
 		super(SERVER_PORT, "ALPHA");
@@ -29,6 +32,7 @@ public class GroupServer extends Server {
 	}
 
 	public void start() {
+		crypto = new Crypto();
 		// Overwrote server.start() because if no user file exists, initial admin account needs to be created
 
 		String userFile = "UserList.bin";
@@ -52,11 +56,13 @@ public class GroupServer extends Server {
 			System.out.println("UserList File Does Not Exist. Creating UserList...");
 			System.out.println("No users currently exist. Your account will be the administrator.");
 			System.out.print("Enter your username: ");
-			String username = console.next();
+			String username = console.nextLine();
+			System.out.print("Enter your password: ");
+			String password = console.nextLine();
 
 			//Create a new list, add current user to the ADMIN group. They now own the ADMIN group.
 			userList = new UserList();
-			userList.addUser(username);
+			userList.addUser(username, password);
 			userList.addGroup(username, "ADMIN");
 			userList.addOwnership(username, "ADMIN");
 		}
@@ -71,6 +77,8 @@ public class GroupServer extends Server {
 			System.exit(-1);
 		}
 
+		// reading in saved RSA keys, or generating if missing
+		RSAKeys = crypto.getRSAKeys("GroupPublic.rsa", "GroupPrivate.rsa");
 		//Autosave Daemon. Saves lists every 5 minutes
 		AutoSave aSave = new AutoSave(this);
 		aSave.setDaemon(true);

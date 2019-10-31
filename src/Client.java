@@ -3,6 +3,9 @@ import java.net.UnknownHostException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.security.KeyPair;
+import java.security.PublicKey;
+import java.security.Key;
 
 public abstract class Client {
 
@@ -12,6 +15,10 @@ public abstract class Client {
 	protected Socket sock;
 	protected ObjectOutputStream output;
 	protected ObjectInputStream input;
+	protected KeyPair RSAKeys;
+	protected PublicKey serverPublicKey;
+	protected Key AESKey;
+	protected Crypto crypto;
 
 	public boolean connect(final String server, final int port) {
 		System.out.println("attempting to connect");
@@ -50,5 +57,11 @@ public abstract class Client {
 				e.printStackTrace(System.err);
 			}
 		}
+	}
+
+	public boolean getRSAKeys(String publicPath, String privatePath)
+	{
+		RSAKeys = crypto.getRSAKeys(publicPath, privatePath);
+		return RSAKeys == null;
 	}
 }

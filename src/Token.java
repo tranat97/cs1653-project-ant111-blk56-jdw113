@@ -1,6 +1,10 @@
 import java.util.List;
 import java.util.ArrayList;
 import java.io.Serializable;
+import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ObjectOutputStream;
+import java.io.ObjectInputStream;
 
 public class Token implements UserToken, Serializable
 {
@@ -13,6 +17,26 @@ public class Token implements UserToken, Serializable
 		this.issuer = issuer;
 		this.subject = subject;
 		this.groups = new ArrayList<String>(groups);
+	}
+
+	public Token(byte bytes[])
+	{
+		try
+		{
+			ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+			ObjectInputStream ois = new ObjectInputStream(bis);
+			Token t = (Token)ois.readObject();
+			ois.close();
+			bis.close();
+			this.issuer = t.getIssuer();
+			this.subject = t.getSubject();
+			this.groups = t.getGroups();
+		}
+		catch (Exception e)
+		{
+			System.err.println("Failed to turn bytes into token");
+			e.printStackTrace();
+		}
 	}
 
     /**
@@ -58,5 +82,37 @@ public class Token implements UserToken, Serializable
     public List<String> getGroups()
 	{
 		return new ArrayList<String>(groups);
+	}
+
+	public String toString()
+	{
+		StringBuilder sb = new StringBuilder();
+		sb.append(issuer + ":" + subject + ":");
+		for (String s : groups)
+		{
+			sb.append(s + ":");
+		}
+		return sb.toString();
+	}
+
+	public byte[] toBytes()
+	{
+		try
+		{
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			ObjectOutputStream oos = new ObjectOutputStream(bos);
+			oos.writeObject(this);
+			oos.flush();
+			final byte[] bytes = bos.toByteArray();
+			oos.close();
+			bos.close();
+			return bytes;
+		}
+		catch (Exception e)
+		{
+			System.err.println("Failed to turn token into bytes");
+			e.printStackTrace();
+			return null;
+		}
 	}
 }

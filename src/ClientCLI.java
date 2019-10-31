@@ -8,13 +8,17 @@ public class ClientCLI {
     final static GroupClient groupClient = new GroupClient();
     final static FileClient fileClient = new FileClient();
     static UserToken token;
+	static String username;
+	static String password;
 
     public static void main(String[] args) {
         connect("GroupServer", groupClient);
-        connect("FileServer", fileClient);
 //      groupClient.connect("localhost", 8765);
+		groupClient.getRSAKeys("ClientPublic.rsa", "ClientPrivate.rsa");
+        groupClient.handshake();
+        connect("FileServer", fileClient);
 //      fileClient.connect("localhost", 4321);
-        String username = login();
+        login();
 
         String command;
         System.out.println("Type help to get a list of commands\nType exit to quit");
@@ -25,25 +29,25 @@ public class ClientCLI {
             if (command.equals("help")) {
                 printHelp();
             } else if (command.equals("changeuser")) {
-                username = login();
-                refreshToken(username);
+                login();
+                refreshToken();
             } else if (command.equals("createuser")) {
                 createUser();
             } else if (command.equals("deleteuser")) {
                 deleteUser();
-                refreshToken(username);
+                refreshToken();
             } else if (command.equals("creategroup")) {
                 createGroup();
-                refreshToken(username);
+                refreshToken();
             } else if (command.equals("deletegroup")) {
                 deleteGroup();
-                refreshToken(username);
+                refreshToken();
             } else if (command.equals("addusertogroup")) {
                 addUserToGroup();
-                refreshToken(username);
+                refreshToken();
             } else if (command.equals("deleteuserfromgroup")) {
                 deleteUserFromGroup();
-                refreshToken(username);
+                refreshToken();
             } else if (command.equals("listmembers")) {
                 listMembers();
             } else if (command.equals("listfiles")) {
@@ -75,24 +79,24 @@ public class ClientCLI {
         }
     }
 
-    public static String login() {
+    public static void login() {
         UserToken recieved;
-        String username;
         do {
             System.out.print("Enter username: ");
             username = scan.nextLine();
-            recieved = groupClient.getToken(username);
+			System.out.print("Enter password: ");
+			password = scan.nextLine();
+            recieved = groupClient.getToken(username, password);
             if (recieved == null) {
-                System.out.println("Invalid username");
+                System.out.println("Invalid credentials");
             }
         } while (recieved == null);
         
         token = recieved;
-        return username;
     }
 
-    public static void refreshToken(final String username) {
-        token = groupClient.getToken(username);
+    public static void refreshToken() {
+        token = groupClient.getToken(username, password);
     }
 
     public static void printHelp() {
@@ -108,7 +112,9 @@ public class ClientCLI {
     public static void createUser() {
         System.out.print("Enter new user's username: ");
         final String username = scan.nextLine();
-        if (groupClient.createUser(username, token)) {
+		System.out.print("Enter new user's password: ");
+		final String password = scan.nextLine();
+        if (groupClient.createUser(username, password, token)) {
             System.out.println("Successfully created user: " + username);
         } else {
             System.out.println("Failed to create user: " + username);
