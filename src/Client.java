@@ -60,12 +60,12 @@ public abstract class Client {
 	}
 
 
-	private Envelope receive() throws Exception
+	protected Envelope receive() throws Exception
 	{
 		return crypto.decrypt((Envelope) input.readObject(), AESKey);
 	}
 
-	private void send(Envelope e) throws Exception
+	protected void send(Envelope e) throws Exception
 	{
 		output.writeObject(crypto.encrypt(e, AESKey));
 	}

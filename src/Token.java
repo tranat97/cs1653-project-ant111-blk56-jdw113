@@ -26,7 +26,7 @@ public class Token implements UserToken, Serializable
      * @return The issuer of this token
      *
      */
-    public String getIssuer()
+	public String getIssuer()
 	{
 		return this.issuer;
 	}
@@ -41,7 +41,7 @@ public class Token implements UserToken, Serializable
      * @return The subject of this token
      *
      */
-    public String getSubject()
+	public String getSubject()
 	{
 		return this.subject;
 	}
@@ -56,7 +56,7 @@ public class Token implements UserToken, Serializable
      * @return The list of group memberships encoded in this token
      *
      */
-    public List<String> getGroups()
+	public List<String> getGroups()
 	{
 		return new ArrayList<String>(groups);
 	}
@@ -75,11 +75,9 @@ public class Token implements UserToken, Serializable
 	{
 		final StringBuilder sb = new StringBuilder();
 		sb.append(issuer + ":" + subject + ":");
-		for (String s : groups)
-		{
+		for (String s : groups) {
 			sb.append(s + ":");
 		}
 		return sb.toString();
 	}
-
 }
