@@ -1,13 +1,7 @@
 /* Group server. Server loads the users from UserList.bin.
- * If user list does not exists, it creates a new list and makes the user the server administrator.
- * On exit, the server saves the user list to file.
- */
-
-/*
- * TODO: This file will need to be modified to save state related to
- *       groups that are created in the system
- *
- */
+*  If user list does not exists, it creates a new list and makes the user the server administrator.
+*  On exit, the server saves the user list to file.
+*/
 
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -15,23 +9,25 @@ import java.io.*;
 import java.util.*;
 import java.security.KeyPair;
 
-
-public class GroupServer extends Server {
-
+public class GroupServer extends Server
+{
 	public static final int SERVER_PORT = 8765;
 	public Crypto crypto;
 	public UserList userList;
 	public KeyPair RSAKeys;
 
-	public GroupServer() {
+	public GroupServer()
+	{
 		super(SERVER_PORT, "ALPHA");
 	}
 
-	public GroupServer(int _port) {
+	public GroupServer(int _port)
+	{
 		super(_port, "ALPHA");
 	}
 
-	public void start() {
+	public void start()
+	{
 		crypto = new Crypto();
 		// Overwrote server.start() because if no user file exists, initial admin account needs to be created
 
@@ -50,9 +46,7 @@ public class GroupServer extends Server {
 			userStream = new ObjectInputStream(fis);
 			userList = (UserList)userStream.readObject();
 			System.out.println("UserFile found...");
-		}
-		catch(FileNotFoundException e)
-		{
+		} catch(FileNotFoundException e) {
 			System.out.println("UserList File Does Not Exist. Creating UserList...");
 			System.out.println("No users currently exist. Your account will be the administrator.");
 			System.out.print("Enter your username: ");
@@ -65,14 +59,10 @@ public class GroupServer extends Server {
 			userList.addUser(username, password);
 			userList.addGroup(username, "ADMIN");
 			userList.addOwnership(username, "ADMIN");
-		}
-		catch(IOException e)
-		{
+		} catch(IOException e) {
 			System.out.println("Error reading from UserList file");
 			System.exit(-1);
-		}
-		catch(ClassNotFoundException e)
-		{
+		} catch(ClassNotFoundException e) {
 			System.out.println("Error reading from UserList file");
 			System.exit(-1);
 		}
@@ -85,26 +75,20 @@ public class GroupServer extends Server {
 		aSave.start();
 
 		//This block listens for connections and creates threads on new connections
-		try
-		{
+		try {
 			final ServerSocket serverSock = new ServerSocket(port);
-
 			Socket sock = null;
 			GroupThread thread = null;
 
-			while(true)
-			{
+			while(true) {
 				sock = serverSock.accept();
 				thread = new GroupThread(sock, this);
 				thread.start();
 			}
-		}
-		catch(Exception e)
-		{
+		} catch(Exception e) {
 			System.err.println("Error: " + e.getMessage());
 			e.printStackTrace(System.err);
 		}
-
 	}
 }
 
@@ -113,7 +97,8 @@ class ShutDownListener extends Thread
 {
 	public GroupServer my_gs;
 
-	public ShutDownListener (GroupServer _gs) {
+	public ShutDownListener (GroupServer _gs)
+	{
 		my_gs = _gs;
 	}
 
@@ -121,13 +106,10 @@ class ShutDownListener extends Thread
 	{
 		System.out.println("Shutting down server");
 		ObjectOutputStream outStream;
-		try
-		{
+		try {
 			outStream = new ObjectOutputStream(new FileOutputStream("UserList.bin"));
 			outStream.writeObject(my_gs.userList);
-		}
-		catch(Exception e)
-		{
+		} catch(Exception e) {
 			System.err.println("Error: " + e.getMessage());
 			e.printStackTrace(System.err);
 		}
@@ -138,33 +120,26 @@ class AutoSave extends Thread
 {
 	public GroupServer my_gs;
 
-	public AutoSave (GroupServer _gs) {
+	public AutoSave (GroupServer _gs)
+	{
 		my_gs = _gs;
 	}
 
 	public void run()
 	{
-		do
-		{
-			try
-			{
+		do {
+			try {
 				Thread.sleep(300000); //Save user lists every 5 minutes
 				System.out.println("Autosave user lists...");
 				ObjectOutputStream outStream;
-				try
-				{
+				try {
 					outStream = new ObjectOutputStream(new FileOutputStream("UserList.bin"));
 					outStream.writeObject(my_gs.userList);
-				}
-				catch(Exception e)
-				{
+				} catch(Exception e) {
 					System.err.println("Error: " + e.getMessage());
 					e.printStackTrace(System.err);
 				}
-
-			}
-			catch(Exception e)
-			{
+			} catch(Exception e) {
 				System.out.println("Autosave Interrupted");
 			}
 		} while(true);

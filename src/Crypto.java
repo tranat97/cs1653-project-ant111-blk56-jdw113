@@ -39,16 +39,12 @@ public class Crypto
 		byte[] IV = generateIV();
 		Envelope result = new Envelope(bytesToHex(encrypt(e.getMessage().getBytes(), IV, AESKey)));
 		result.addObject(Arrays.copyOf(IV, IV.length));
-		for (int i = 0; i < e.getObjContents().size(); i++)
-		{
+		for (int i = 0; i < e.getObjContents().size(); i++) {
 			IV[0]++;
 			Object contents = e.getObjContents().get(i);
-			if (contents == null)
-			{
+			if (contents == null) {
 				result.addObject(null);
-			}
-			else
-			{
+			} else {
 				result.addObject(encrypt(objectToBytes(contents), IV, AESKey));
 			}
 		}
@@ -60,16 +56,12 @@ public class Crypto
 	{
 		byte[] IV = (byte[]) e.getObjContents().get(0);
 		Envelope result = new Envelope(new String(decrypt(hexToBytes(e.getMessage()), IV, AESKey)));
-		for (int i = 1; i < e.getObjContents().size(); i++)
-		{
+		for (int i = 1; i < e.getObjContents().size(); i++) {
 			IV[0]++;
 			byte[] contents = (byte[]) e.getObjContents().get(i);
-			if (contents == null)
-			{
+			if (contents == null) {
 				result.addObject(null);
-			}
-			else
-			{
+			} else {
 				result.addObject(bytesToObject(decrypt(contents, IV, AESKey)));
 			}
 		}
@@ -78,13 +70,10 @@ public class Crypto
 
 	public byte[] hash(String s)
 	{
-		try
-		{
+		try {
 			MessageDigest md = MessageDigest.getInstance("SHA-256");
 			return md.digest(s.getBytes());
-		}
-		catch (GeneralSecurityException e)
-		{
+		} catch (GeneralSecurityException e) {
 			System.err.println("Failed to hash");
 			e.printStackTrace();
 			return null;
@@ -98,15 +87,12 @@ public class Crypto
 
 	public byte[] sign(PrivateKey privateKey, byte[] plaintext)
 	{
-		try
-		{
+		try {
 			final Signature sig = Signature.getInstance("SHA256withRSA", "BC");
 			sig.initSign(privateKey);
 			sig.update(plaintext);
 			return sig.sign();
-		}
-		catch (GeneralSecurityException e)
-		{
+		} catch (GeneralSecurityException e) {
 			System.err.println("Failed to sign");
 			e.printStackTrace();
 			return null;
@@ -120,15 +106,12 @@ public class Crypto
 
 	public boolean verify(PublicKey publicKey, byte[] ciphertext, byte[] plaintext)
 	{
-		try
-		{
+		try {
 			final Signature sig = Signature.getInstance("SHA256withRSA", "BC");
 			sig.initVerify(publicKey);
 			sig.update(plaintext);
 			return sig.verify(ciphertext);
-		}
-		catch (GeneralSecurityException e)
-		{
+		} catch (GeneralSecurityException e) {
 			System.err.println("Failed to verify");
 			e.printStackTrace();
 			return false;
@@ -137,14 +120,11 @@ public class Crypto
 
 	public byte[] encryptAESKey(Key AESKey, Key publicKey)
 	{
-		try
-		{
+		try {
 			final Cipher cipher = Cipher.getInstance("RSA", "BC");
 			cipher.init(Cipher.ENCRYPT_MODE, publicKey);
 			return cipher.doFinal(AESKey.getEncoded());
-		}
-		catch (GeneralSecurityException e)
-		{
+		} catch (GeneralSecurityException e) {
 			System.err.println("Failed to decrypt AES key");
 			e.printStackTrace();
 			return null;
@@ -153,15 +133,12 @@ public class Crypto
 
 	public Key decryptAESKey(byte[] ciphertext, Key privateKey)
 	{
-		try
-		{
+		try {
 			final Cipher cipher = Cipher.getInstance("RSA", "BC");
 			cipher.init(Cipher.DECRYPT_MODE, privateKey);
 			final byte plaintext[] = cipher.doFinal(ciphertext);
 			return new SecretKeySpec(plaintext, "AES");
-		}
-		catch (GeneralSecurityException e)
-		{
+		} catch (GeneralSecurityException e) {
 			System.err.println("Failed to decrypt AES key");
 			e.printStackTrace();
 			return null;
@@ -170,15 +147,12 @@ public class Crypto
 
 	public byte[] decrypt(byte[] ciphertext, byte IVBytes[], Key k)
 	{
-		try
-		{
+		try {
 			final IvParameterSpec IV = new IvParameterSpec(IVBytes);
 			final Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
 			cipher.init(Cipher.DECRYPT_MODE, k, IV);
 			return cipher.doFinal(ciphertext);
-		}
-		catch (GeneralSecurityException e)
-		{
+		} catch (GeneralSecurityException e) {
 			System.err.println("Failed to decrypt");
 			e.printStackTrace();
 			return null;
@@ -187,15 +161,12 @@ public class Crypto
 
 	public byte[] encrypt(byte[] plaintext, byte IVBytes[], Key k)
 	{
-		try
-		{
+		try {
 			final IvParameterSpec IV = new IvParameterSpec(IVBytes);
 			final Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
 			cipher.init(Cipher.ENCRYPT_MODE, k, IV);
 			return cipher.doFinal(plaintext);
-		}
-		catch (GeneralSecurityException e)
-		{
+		} catch (GeneralSecurityException e) {
 			System.err.println("Failed to encrypt");
 			e.printStackTrace();
 			return null;
@@ -212,14 +183,11 @@ public class Crypto
 
 	public Key generateAESKey()
 	{
-		try
-		{
+		try {
 			final KeyGenerator keygen = KeyGenerator.getInstance("AES", "BC");
 			keygen.init(256);
 			return keygen.generateKey();
-		}
-		catch (GeneralSecurityException e)
-		{
+		} catch (GeneralSecurityException e) {
 			System.err.println("Failed to generate AES key");
 			e.printStackTrace();
 			return null;
@@ -228,14 +196,11 @@ public class Crypto
 
 	public KeyPair generateRSAKeys() 
 	{
-		try
-		{
+		try {
 			final KeyPairGenerator keygen = KeyPairGenerator.getInstance("RSA", "BC");
 			keygen.initialize(4096);
 			return keygen.generateKeyPair();
-		}
-		catch (GeneralSecurityException e)
-		{
+		} catch (GeneralSecurityException e) {
 			System.err.println("Failed to generate RSA keypair");
 			e.printStackTrace();
 			return null;
@@ -249,10 +214,8 @@ public class Crypto
 		KeyPair RSAKeys = null;
 
 		// if keys already exist
-		if (publicFile.exists() && privateFile.exists())
-		{
-			try
-			{
+		if (publicFile.exists() && privateFile.exists()) {
+			try {
 				FileInputStream fis = new FileInputStream(publicFile);
 				ObjectInputStream ois = new ObjectInputStream(fis);
 				final PublicKey pub = (PublicKey)ois.readObject();
@@ -267,29 +230,21 @@ public class Crypto
 
 				RSAKeys = new KeyPair(pub, priv);
 				System.out.println("RSA key pair found");
-			}
-			catch (IOException e)
-			{
+			} catch (IOException e) {
+				System.err.println("Error reading existing keys");
+				return null;
+			} catch (ClassNotFoundException e) {
 				System.err.println("Error reading existing keys");
 				return null;
 			}
-			catch (ClassNotFoundException e)
-			{
-				System.err.println("Error reading existing keys");
-				return null;
-			}
-		}
-		else
-		{
+		} else {
 			System.out.println("RSA key pair not found, generating...");
 			RSAKeys = generateRSAKeys();
-			if (RSAKeys == null)
-			{
+			if (RSAKeys == null) {
 				return null;
 			}
 
-			try
-			{
+			try {
 				// writing new keypair to files
 				FileOutputStream fos = new FileOutputStream(publicFile);
 				ObjectOutputStream oos = new ObjectOutputStream(fos);
@@ -303,9 +258,7 @@ public class Crypto
 				oos.close();
 				fos.close();
 				System.out.println("Saved keys to files");
-			}
-			catch (IOException e)
-			{
+			} catch (IOException e) {
 				System.err.println("Error writing new keys");
 			}
 		}
@@ -324,17 +277,14 @@ public class Crypto
 
 	private Object bytesToObject(byte[] bytes)
 	{
-		try
-		{
+		try {
 			final ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
 			final ObjectInputStream ois = new ObjectInputStream(bis);
 			final Object o = ois.readObject();
 			ois.close();
 			bis.close();
 			return o;
-		}
-		catch (Exception e)
-		{
+		} catch (Exception e) {
 			System.err.println("Failed to turn bytes into token");
 			e.printStackTrace();
 			return null;
@@ -343,8 +293,7 @@ public class Crypto
 
 	private byte[] objectToBytes(Object o)
 	{
-		try
-		{
+		try {
 			final ByteArrayOutputStream bos = new ByteArrayOutputStream();
 			final ObjectOutputStream oos = new ObjectOutputStream(bos);
 			oos.writeObject(o);
@@ -353,9 +302,7 @@ public class Crypto
 			oos.close();
 			bos.close();
 			return bytes;
-		}
-		catch (Exception e)
-		{
+		} catch (Exception e) {
 			System.err.println("Failed to turn token into bytes");
 			e.printStackTrace();
 			return null;

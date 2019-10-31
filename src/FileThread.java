@@ -22,26 +22,22 @@ public class FileThread extends Thread
 	public void run()
 	{
 		boolean proceed = true;
-		try
-		{
+		try {
 			System.out.println("*** New connection from " + socket.getInetAddress() + ":" + socket.getPort() + "***");
 			final ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
 			final ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
 			Envelope response;
 
-			do
-			{
+			do {
 				Envelope e = (Envelope)input.readObject();
 				System.out.println("Request received: " + e.getMessage());
 
 				// Handler to list files that this user is allowed to see
-				if(e.getMessage().equals("LFILES"))
-				{
+				if(e.getMessage().equals("LFILES")) {
 					List<ShareFile> shareFiles = FileServer.fileList.getFiles();
 					Token t = (Token)e.getObjContents().get(0);
 					List<String> accessible = new ArrayList<String>();
-					for (ShareFile f : shareFiles)
-					{
+					for (ShareFile f : shareFiles) {
 						if (t.getGroups().contains(f.getGroup())) {
 							accessible.add(f.getPath());
 						}
@@ -49,16 +45,10 @@ public class FileThread extends Thread
 					response = new Envelope("OK");
 					response.addObject(accessible);
 					output.writeObject(response);
-				}
-				if(e.getMessage().equals("UPLOADF"))
-				{
-
-					if(e.getObjContents().size() < 3)
-					{
+				} else if(e.getMessage().equals("UPLOADF")) {
+					if(e.getObjContents().size() < 3) {
 						response = new Envelope("FAIL-BADCONTENTS");
-					}
-					else
-					{
+					} else {
 						if(e.getObjContents().get(0) == null) {
 							response = new Envelope("FAIL-BADPATH");
 						}
@@ -67,8 +57,7 @@ public class FileThread extends Thread
 						}
 						if(e.getObjContents().get(2) == null) {
 							response = new Envelope("FAIL-BADTOKEN");
-						}
-						else {
+						} else {
 							String remotePath = (String)e.getObjContents().get(0);
 							String group = (String)e.getObjContents().get(1);
 							UserToken yourToken = (UserToken)e.getObjContents().get(2); //Extract token
@@ -76,12 +65,10 @@ public class FileThread extends Thread
 							if (FileServer.fileList.checkFile(remotePath)) {
 								System.out.printf("Error: file already exists at %s\n", remotePath);
 								response = new Envelope("FAIL-FILEEXISTS"); //Success
-							}
-							else if (!yourToken.getGroups().contains(group)) {
+							} else if (!yourToken.getGroups().contains(group)) {
 								System.out.printf("Error: user missing valid token for group %s\n", group);
 								response = new Envelope("FAIL-UNAUTHORIZED"); //Success
-							}
-							else  {
+							} else  {
 								File file = new File("shared_files/"+remotePath.replace('/', '_'));
 								file.createNewFile();
 								FileOutputStream fos = new FileOutputStream(file);
@@ -102,8 +89,7 @@ public class FileThread extends Thread
 									System.out.printf("Transfer successful file %s\n", remotePath);
 									FileServer.fileList.addFile(yourToken.getSubject(), group, remotePath);
 									response = new Envelope("OK"); //Success
-								}
-								else {
+								} else {
 									System.out.printf("Error reading file %s from client\n", remotePath);
 									response = new Envelope("ERROR-TRANSFER"); //Success
 								}
@@ -111,11 +97,8 @@ public class FileThread extends Thread
 							}
 						}
 					}
-
 					output.writeObject(response);
-				}
-				else if (e.getMessage().compareTo("DOWNLOADF")==0) {
-
+				} else if (e.getMessage().compareTo("DOWNLOADF")==0) {
 					String remotePath = (String)e.getObjContents().get(0);
 					Token t = (Token)e.getObjContents().get(1);
 					ShareFile sf = FileServer.fileList.getFile("/"+remotePath);
@@ -124,145 +107,102 @@ public class FileThread extends Thread
 						e = new Envelope("ERROR_FILEMISSING");
 						output.writeObject(e);
 
-					}
-					else if (!t.getGroups().contains(sf.getGroup())){
+					} else if (!t.getGroups().contains(sf.getGroup())){
 						System.out.printf("Error user %s doesn't have permission\n", t.getSubject());
 						e = new Envelope("ERROR_PERMISSION");
 						output.writeObject(e);
-					}
-					else {
-
-						try
-						{
+					} else {
+						try {
 							File f = new File("shared_files/_"+remotePath.replace('/', '_'));
-						if (!f.exists()) {
-							System.out.printf("Error file %s missing from disk\n", "_"+remotePath.replace('/', '_'));
-							e = new Envelope("ERROR_NOTONDISK");
-							output.writeObject(e);
-
-						}
-						else {
-							FileInputStream fis = new FileInputStream(f);
-
-							do {
-								byte[] buf = new byte[4096];
-								if (e.getMessage().compareTo("DOWNLOADF")!=0) {
-									System.out.printf("Server error: %s\n", e.getMessage());
-									break;
-								}
-								e = new Envelope("CHUNK");
-								int n = fis.read(buf); //can throw an IOException
-								if (n > 0) {
-									System.out.printf(".");
-								} else if (n < 0) {
-									System.out.println("Read error");
-
-								}
-
-
-								e.addObject(buf);
-								e.addObject(new Integer(n));
-
+							if (!f.exists()) {
+								System.out.printf("Error file %s missing from disk\n", "_"+remotePath.replace('/', '_'));
+								e = new Envelope("ERROR_NOTONDISK");
 								output.writeObject(e);
+							} else {
+								FileInputStream fis = new FileInputStream(f);
 
-								e = (Envelope)input.readObject();
+								do {
+									byte[] buf = new byte[4096];
+									if (e.getMessage().compareTo("DOWNLOADF")!=0) {
+										System.out.printf("Server error: %s\n", e.getMessage());
+										break;
+									}
+									e = new Envelope("CHUNK");
+									int n = fis.read(buf); //can throw an IOException
+									if (n > 0) {
+										System.out.printf(".");
+									} else if (n < 0) {
+										System.out.println("Read error");
+									}
 
+									e.addObject(buf);
+									e.addObject(new Integer(n));
+									output.writeObject(e);
 
-							}
-							while (fis.available()>0);
+									e = (Envelope)input.readObject();
+								} while (fis.available()>0);
 
-							//If server indicates success, return the member list
-							if(e.getMessage().compareTo("DOWNLOADF")==0)
-							{
-
-								e = new Envelope("EOF");
-								output.writeObject(e);
-
-								e = (Envelope)input.readObject();
-								if(e.getMessage().compareTo("OK")==0) {
-									System.out.printf("File data upload successful\n");
-								}
-								else {
-
+								//If server indicates success, return the member list
+								if(e.getMessage().compareTo("DOWNLOADF")==0) {
+									e = new Envelope("EOF");
+									output.writeObject(e);
+									e = (Envelope)input.readObject();
+									if(e.getMessage().compareTo("OK")==0) {
+										System.out.printf("File data upload successful\n");
+									} else {
+										System.out.printf("Upload failed: %s\n", e.getMessage());
+									}
+								} else {
 									System.out.printf("Upload failed: %s\n", e.getMessage());
-
 								}
-
 							}
-							else {
-
-								System.out.printf("Upload failed: %s\n", e.getMessage());
-
-							}
-						}
-						}
-						catch(Exception e1)
-						{
+						} catch(Exception e1) {
 							System.err.println("Error: " + e.getMessage());
 							e1.printStackTrace(System.err);
 
 						}
 					}
-				}
-				else if (e.getMessage().compareTo("DELETEF")==0) {
-
+				} else if (e.getMessage().compareTo("DELETEF")==0) {
 					String remotePath = (String)e.getObjContents().get(0);
 					Token t = (Token)e.getObjContents().get(1);
 					ShareFile sf = FileServer.fileList.getFile("/"+remotePath);
 					if (sf == null) {
 						System.out.printf("Error: File %s doesn't exist\n", remotePath);
 						e = new Envelope("ERROR_DOESNTEXIST");
-					}
-					else if (!t.getGroups().contains(sf.getGroup())){
+					} else if (!t.getGroups().contains(sf.getGroup())) {
 						System.out.printf("Error user %s doesn't have permission\n", t.getSubject());
 						e = new Envelope("ERROR_PERMISSION");
-					}
-					else {
-
-						try
-						{
-
-
+					} else {
+						try {
 							File f = new File("shared_files/"+"_"+remotePath.replace('/', '_'));
 
 							if (!f.exists()) {
 								System.out.printf("Error file %s missing from disk\n", "_"+remotePath.replace('/', '_'));
 								e = new Envelope("ERROR_FILEMISSING");
-							}
-							else if (f.delete()) {
+							} else if (f.delete()) {
 								System.out.printf("File %s deleted from disk\n", "_"+remotePath.replace('/', '_'));
 								FileServer.fileList.removeFile("/"+remotePath);
 								e = new Envelope("OK");
-							}
-							else {
+							} else {
 								System.out.printf("Error deleting file %s from disk\n", "_"+remotePath.replace('/', '_'));
 								e = new Envelope("ERROR_DELETE");
 							}
-
-
-						}
-						catch(Exception e1)
-						{
+						} catch(Exception e1) {
 							System.err.println("Error: " + e1.getMessage());
 							e1.printStackTrace(System.err);
 							e = new Envelope(e1.getMessage());
 						}
 					}
 					output.writeObject(e);
-
 				}
-				else if(e.getMessage().equals("DISCONNECT"))
-				{
+				else if(e.getMessage().equals("DISCONNECT")) {
 					socket.close();
 					proceed = false;
 				}
 			} while(proceed);
-		}
-		catch(Exception e)
-		{
+		} catch(Exception e) {
 			System.err.println("Error: " + e.getMessage());
 			e.printStackTrace(System.err);
 		}
 	}
-
 }
