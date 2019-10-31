@@ -51,12 +51,23 @@ public abstract class Client {
 		if (isConnected()) {
 			try {
 				Envelope message = new Envelope("DISCONNECT");
-				output.writeObject(message);
+				send(message);
 			} catch(Exception e) {
 				System.err.println("Error: " + e.getMessage());
 				e.printStackTrace(System.err);
 			}
 		}
+	}
+
+
+	private Envelope receive() throws Exception
+	{
+		return crypto.decrypt((Envelope) input.readObject(), AESKey);
+	}
+
+	private void send(Envelope e) throws Exception
+	{
+		output.writeObject(crypto.encrypt(e, AESKey));
 	}
 
 	public boolean getRSAKeys(String publicPath, String privatePath)

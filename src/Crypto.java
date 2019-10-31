@@ -14,6 +14,10 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.xml.bind.DatatypeConverter;
+import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ObjectOutputStream;
+import java.io.ObjectInputStream;
 import java.io.FileOutputStream;
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
@@ -29,9 +33,7 @@ public class Crypto
 		Security.addProvider(new BouncyCastleProvider());
 	}
 
-	/* Returns an envelope with encrypted contents using our format,
-	 * This method assumes that all objects in e are byte[]
-	 */
+	/* Returns an envelope with encrypted contents using our format */
 	public Envelope encrypt(Envelope e, Key AESKey)
 	{
 		byte[] IV = generateIV();
@@ -40,21 +42,20 @@ public class Crypto
 		for (int i = 0; i < e.getObjContents().size(); i++)
 		{
 			IV[0]++;
-			byte[] contents = (byte[]) e.getObjContents().get(i);
+			Object contents = e.getObjContents().get(i);
 			if (contents == null)
 			{
 				result.addObject(null);
 			}
 			else
 			{
-				result.addObject(encrypt(contents, IV, AESKey));
+				result.addObject(encrypt(objectToBytes(contents), IV, AESKey));
 			}
 		}
 		return result;
 	}
 
-	/* Returns an envelope with decrypted contents using our format,
-	 * all objects in the envelope returned will be byte[] */
+	/* Returns an envelope with decrypted contents using our format */
 	public Envelope decrypt(Envelope e, Key AESKey)
 	{
 		byte[] IV = (byte[]) e.getObjContents().get(0);
@@ -69,7 +70,7 @@ public class Crypto
 			}
 			else
 			{
-				result.addObject(decrypt(contents, IV, AESKey));
+				result.addObject(bytesToObject(decrypt(contents, IV, AESKey)));
 			}
 		}
 		return result;
@@ -319,5 +320,45 @@ public class Crypto
 	private String bytesToHex(byte[] bytes)
 	{
 		return DatatypeConverter.printHexBinary(bytes);
+	}
+
+	private Object bytesToObject(byte[] bytes)
+	{
+		try
+		{
+			final ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+			final ObjectInputStream ois = new ObjectInputStream(bis);
+			final Object o = ois.readObject();
+			ois.close();
+			bis.close();
+			return o;
+		}
+		catch (Exception e)
+		{
+			System.err.println("Failed to turn bytes into token");
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private byte[] objectToBytes(Object o)
+	{
+		try
+		{
+			final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			final ObjectOutputStream oos = new ObjectOutputStream(bos);
+			oos.writeObject(o);
+			oos.flush();
+			final byte[] bytes = bos.toByteArray();
+			oos.close();
+			bos.close();
+			return bytes;
+		}
+		catch (Exception e)
+		{
+			System.err.println("Failed to turn token into bytes");
+			e.printStackTrace();
+			return null;
+		}
 	}
 }

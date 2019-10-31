@@ -64,7 +64,7 @@ public class GroupThread extends Thread {
 
                 if (message.getMessage().equals("GET"))//Client wants a token
                 {
-					if (message.getObjContents().size() != 1)
+					if (message.getObjContents().size() != 2)
 					{
 						response = new Envelope("FAIL");
 						response.addObject(null);
@@ -72,19 +72,21 @@ public class GroupThread extends Thread {
 					}
 					else
 					{
-						String credentials[] = new String((byte[]) message.getObjContents().get(0)).split(":", 2);
-						if (credentials == null || credentials.length != 2) {
+						String username = (String) message.getObjContents().get(0);
+						String password = (String) message.getObjContents().get(1);
+
+						if (username == null || password == null) {
 							response = new Envelope("FAIL");
 							response.addObject(null);
 							send(response);
 						} else {
-							if (my_gs.userList.checkPassword(credentials[0], credentials[1])) {
-								UserToken yourToken = createToken("admin"); //Create a token
+							if (my_gs.userList.checkPassword(username, password)) {
+								UserToken yourToken = createToken(username); //Create a token
 								crypto.sign(my_gs.RSAKeys.getPrivate(), yourToken);
 								
 								//Respond to the client. On error, the client will receive a null token
 								response = new Envelope("OK");
-								response.addObject(yourToken.toBytes());
+								response.addObject(yourToken);
 								send(response);
 							} else {
 								response = new Envelope("FAIL");
@@ -111,10 +113,9 @@ public class GroupThread extends Thread {
                         }
                     }
 
-                    output.writeObject(response);
+                    send(response);
                 } else if (message.getMessage().equals("DUSER")) //Client wants to delete a user
                 {
-
                     if (message.getObjContents().size() < 2) {
                         response = new Envelope("FAIL");
                     } else {
@@ -131,7 +132,7 @@ public class GroupThread extends Thread {
                         }
                     }
 
-                    output.writeObject(response);
+                    send(response);
                 } else if (message.getMessage().equals("CGROUP")) //Client wants to create a group
                 {
                     //check if envelope has correct amount of information
@@ -153,7 +154,7 @@ public class GroupThread extends Thread {
                             }
                         }
                     }
-                    output.writeObject(response);
+                    send(response);
                 } else if (message.getMessage().equals("DGROUP")) //Client wants to delete a group
                 {
                     //check if envelope has correct amount of information
@@ -177,7 +178,7 @@ public class GroupThread extends Thread {
                             }
                         }
                     }
-                    output.writeObject(response);
+                    send(response);
                 } else if (message.getMessage().equals("LMEMBERS")) //Client wants a list of members in a group
                 {
                     //check if envelope has correct amount of information
@@ -198,7 +199,7 @@ public class GroupThread extends Thread {
                             }
                         }
                     }
-                    output.writeObject(response);
+                    send(response);
                 } else if (message.getMessage().equals("AUSERTOGROUP")) //Client wants to add user to a group
                 {
                     if (message.getObjContents().size() < 3) {
@@ -219,7 +220,7 @@ public class GroupThread extends Thread {
                             }
                         }
                     }
-                    output.writeObject(response);
+                    send(response);
                 } else if (message.getMessage().equals("RUSERFROMGROUP")) //Client wants to remove user from a group
                 {
                     if (message.getObjContents().size() < 3) {
@@ -250,14 +251,14 @@ public class GroupThread extends Thread {
                             }
                         }
                     }
-                    output.writeObject(response);
+                    send(response);
                 } else if (message.getMessage().equals("DISCONNECT")) //Client wants to disconnect
                 {
                     socket.close(); //Close the socket
                     proceed = false; //End this communication loop
                 } else {
                     response = new Envelope("FAIL"); //Server does not understand client request
-                    output.writeObject(response);
+                    send(response);
                 }
             } while (proceed);
         } catch (Exception e) {

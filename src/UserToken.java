@@ -50,5 +50,4 @@ public interface UserToken
 
 	public void setSignature(byte[] signature);
 	public byte[] getSignature();
-	public byte[] toBytes();
 }   //-- end interface UserToken
