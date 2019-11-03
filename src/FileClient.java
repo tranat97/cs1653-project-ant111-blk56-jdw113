@@ -5,14 +5,20 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 import java.security.PublicKey;
+import java.security.KeyFactory;
+import java.security.spec.*;
 
 public class FileClient extends Client implements FileClientInterface
 {
-    Hashtable<String, byte[]> knownKeys;
+    private Hashtable<String, String> knownKeys;
+    private File keyFile;
+    
 	public FileClient()
 	{
 		crypto = new Crypto();
-        knownKeys = null;
+        knownKeys = new Hashtable<String, String>();
+        keyFile = new File("KnownKeys.txt");
+        getServerKeys();
 	}
 	//Authentication of the File Server
 	public boolean handshake()
@@ -21,6 +27,7 @@ public class FileClient extends Client implements FileClientInterface
 		Envelope message = null, response = null;
 		Scanner in = new Scanner(System.in);
 		byte[] r1 = null, r2 = null;
+        boolean keySaved = false;
 		try {			
 			response = (Envelope) input.readObject();
 			if (!response.getMessage().equals("PUBKEY") || response.getObjContents().size() != 1) {
@@ -28,20 +35,29 @@ public class FileClient extends Client implements FileClientInterface
 			}
 			//extract public key, hash it and display
 			serverPublicKey = (PublicKey) response.getObjContents().get(0);
-			System.out.println("File Server Public Key: "+crypto.bytesToHex(crypto.hash(serverPublicKey.getEncoded())));
-			do {
-				System.out.print("Do you trust this key? (y/n): ");
-				ans = in.next();
-				if (ans.toLowerCase().equals("n")) {
-					return false;
-				}
-			} while (!ans.toLowerCase().equals("y"));
+            String keyHash = crypto.bytesToHex(crypto.hash(serverPublicKey.getEncoded()));
+            //checking if there is a saved key associated with the IP
+            if(knownKeys.containsKey(sock.getInetAddress().toString())) {
+                //if keys match
+                if(knownKeys.get(sock.getInetAddress().toString()).equals(keyHash)) {
+                    keySaved = true;
+                }
+            }
+            if (!keySaved) {
+                System.out.println("File Server Public Key: "+crypto.bytesToHex(crypto.hash(serverPublicKey.getEncoded())));
+                do {
+                    System.out.print("Do you trust this key? (y/n): ");
+                    ans = in.next();
+                    if (ans.toLowerCase().equals("n")) {
+                        return false;
+                    }
+                } while (!ans.toLowerCase().equals("y"));
+            }
 			
-			//CHALLENGE START
+			//CHALLENGE START-----------------
 			//generate values
 			AESKey = crypto.generateAESKey();
 			r1 = crypto.generateRandomBytes(32);
-			//System.out.println("R1 = "+(new String(r1)));
 			//encrypt envelope using rsa
 			message = new Envelope("R1");
 			message.addObject(crypto.rsaEncrypt(r1, serverPublicKey));
@@ -55,7 +71,6 @@ public class FileClient extends Client implements FileClientInterface
 			}
 			//Challenge 2 Response
 			r2 = (byte[])response.getObjContents().get(1);
-			//System.out.println("R2 = "+(new String(r2)));
 			message = new Envelope("R2_RESPONSE");
 			message.addObject(r2);
 			output.writeObject(crypto.encrypt(message, AESKey));
@@ -64,7 +79,10 @@ public class FileClient extends Client implements FileClientInterface
 			if (!response.getMessage().equals("OK") || response.getObjContents().size()!=0) {
 				throw new Exception("Challenge 2 failure");
 			}
-			
+			//CHALLENGE END----------------
+            if (!keySaved) {
+                saveServerKey();
+            }
 			return true;
 		} catch (Exception e) {
 			System.err.println("Error: " + e.getMessage());
@@ -72,6 +90,42 @@ public class FileClient extends Client implements FileClientInterface
 			return false;
 		}
 	}
+    
+    private void getServerKeys()
+	{
+        String ip, keyHash; 
+        try {
+            keyFile.createNewFile();
+            BufferedReader savedKeys = new BufferedReader(new FileReader(keyFile));
+            while (savedKeys.ready()) {
+                ip = savedKeys.readLine();
+                System.out.println(ip);
+                keyHash = savedKeys.readLine();
+                System.out.println(keyHash);
+                knownKeys.put(ip, keyHash);
+            }
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
+        }
+	}
+    
+    private boolean saveServerKey()
+    {
+        FileWriter fw;
+        String ip = sock.getInetAddress().toString();
+        String keyHash = crypto.bytesToHex(crypto.hash(serverPublicKey.getEncoded()));
+        String entry = ip+"\n"+keyHash+"\n";
+        try {
+            //System.out.println(entry);
+            fw = new FileWriter(keyFile, true);
+            fw.write(entry);
+            fw.close();
+        } catch(Exception e) {
+            System.err.println(e.getMessage());
+            return false;
+        }
+        return true;
+    }
 	
 	public boolean delete(String filename, UserToken token)
 	{
