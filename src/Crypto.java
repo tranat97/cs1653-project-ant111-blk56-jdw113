@@ -36,7 +36,7 @@ public class Crypto
 	/* Returns an envelope with encrypted contents using our format */
 	public Envelope encrypt(Envelope e, Key AESKey)
 	{
-		byte[] IV = generateIV();
+		byte[] IV = generateRandomBytes(16);
 		Envelope result = new Envelope(bytesToHex(encrypt(e.getMessage().getBytes(), IV, AESKey)));
 		result.addObject(Arrays.copyOf(IV, IV.length));
 		for (int i = 0; i < e.getObjContents().size(); i++) {
@@ -118,28 +118,28 @@ public class Crypto
 		}
 	}
 
-	public byte[] encryptAESKey(Key AESKey, Key publicKey)
+	public byte[] rsaEncrypt(byte[] plaintext, Key publicKey)
 	{
 		try {
 			final Cipher cipher = Cipher.getInstance("RSA", "BC");
 			cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-			return cipher.doFinal(AESKey.getEncoded());
+			return cipher.doFinal(plaintext);
 		} catch (GeneralSecurityException e) {
-			System.err.println("Failed to decrypt AES key");
+			System.err.println("Failed to encrypt plaintext");
 			e.printStackTrace();
 			return null;
 		}
 	}
 
-	public Key decryptAESKey(byte[] ciphertext, Key privateKey)
+	public byte[] rsaDecrypt(byte[] ciphertext, Key privateKey)
 	{
 		try {
 			final Cipher cipher = Cipher.getInstance("RSA", "BC");
 			cipher.init(Cipher.DECRYPT_MODE, privateKey);
-			final byte plaintext[] = cipher.doFinal(ciphertext);
-			return new SecretKeySpec(plaintext, "AES");
+			return cipher.doFinal(ciphertext);
+			//return new SecretKeySpec(plaintext, "AES");
 		} catch (GeneralSecurityException e) {
-			System.err.println("Failed to decrypt AES key");
+			System.err.println("Failed to decrypt plaintext");
 			e.printStackTrace();
 			return null;
 		}
@@ -149,7 +149,7 @@ public class Crypto
 	{
 		try {
 			final IvParameterSpec IV = new IvParameterSpec(IVBytes);
-			final Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+			final Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", "BC");
 			cipher.init(Cipher.DECRYPT_MODE, k, IV);
 			return cipher.doFinal(ciphertext);
 		} catch (GeneralSecurityException e) {
@@ -163,7 +163,7 @@ public class Crypto
 	{
 		try {
 			final IvParameterSpec IV = new IvParameterSpec(IVBytes);
-			final Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+			final Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", "BC");
 			cipher.init(Cipher.ENCRYPT_MODE, k, IV);
 			return cipher.doFinal(plaintext);
 		} catch (GeneralSecurityException e) {
@@ -173,13 +173,6 @@ public class Crypto
 		}
 	}
 
-	public byte[] generateIV()
-	{
-		final SecureRandom rand = new SecureRandom();
-		final byte IV[] = new byte[16];
-		rand.nextBytes(IV);
-		return IV;
-	}
 
 	public Key generateAESKey()
 	{
@@ -205,6 +198,13 @@ public class Crypto
 			e.printStackTrace();
 			return null;
 		}
+	}
+	
+	public byte[] generateRandomBytes(int n) {
+		final SecureRandom rand = new SecureRandom();
+		final byte randBytes[] = new byte[n];
+		rand.nextBytes(randBytes);
+		return randBytes;
 	}
 
 	public KeyPair getRSAKeys(final String publicPath, final String privatePath)

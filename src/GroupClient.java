@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.io.ObjectInputStream;
 import java.security.PublicKey;
+import javax.crypto.spec.SecretKeySpec;
 
 public class GroupClient extends Client implements GroupClientInterface {
 
@@ -31,7 +32,9 @@ public class GroupClient extends Client implements GroupClientInterface {
 			if (!response.getMessage().equals("AESKEY") || response.getObjContents().size() != 1) {
 				return false;
 			}
-			AESKey = crypto.decryptAESKey((byte [])response.getObjContents().get(0), RSAKeys.getPrivate());
+			byte[] result = crypto.rsaDecrypt((byte [])response.getObjContents().get(0), RSAKeys.getPrivate());
+			AESKey = new SecretKeySpec(result, "AES");
+			//AESKey = crypto.rsaDecrypt((byte [])response.getObjContents().get(0), RSAKeys.getPrivate());
 		} catch (Exception e) {
 			System.err.println("Error: " + e.getMessage());
 			e.printStackTrace(System.err);

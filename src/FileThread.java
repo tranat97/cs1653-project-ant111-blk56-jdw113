@@ -9,14 +9,23 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.security.Key;
+import java.util.Arrays;
+import javax.crypto.spec.SecretKeySpec;
 
 public class FileThread extends Thread
 {
 	private final Socket socket;
-
-	public FileThread(Socket _socket)
+	private FileServer my_fs;
+	private Key AESKey;
+	private Crypto crypto;
+	private ObjectInputStream input;
+	private ObjectOutputStream output;
+	
+	public FileThread(Socket _socket, FileServer _fs)
 	{
 		socket = _socket;
+		my_fs = _fs;
 	}
 
 	public void run()
@@ -24,12 +33,21 @@ public class FileThread extends Thread
 		boolean proceed = true;
 		try {
 			System.out.println("*** New connection from " + socket.getInetAddress() + ":" + socket.getPort() + "***");
-			final ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
-			final ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
-			Envelope response;
+			input = new ObjectInputStream(socket.getInputStream());
+			output = new ObjectOutputStream(socket.getOutputStream());
+			crypto = new Crypto();
+			Envelope response, e;
+			
+			if (!handshake()) {
+				e = new Envelope("FAIL");
+				output.writeObject(crypto.encrypt(e, AESKey));
+				socket.close();
+				proceed = false;
+				System.out.println("Handshake failure; Disconnecting...");
+			}
 
-			do {
-				Envelope e = (Envelope)input.readObject();
+			while(proceed) {
+				e = (Envelope)input.readObject();
 				System.out.println("Request received: " + e.getMessage());
 
 				// Handler to list files that this user is allowed to see
@@ -199,10 +217,55 @@ public class FileThread extends Thread
 					socket.close();
 					proceed = false;
 				}
-			} while(proceed);
+			}
 		} catch(Exception e) {
 			System.err.println("Error: " + e.getMessage());
 			e.printStackTrace(System.err);
+		}
+	}
+	
+	private boolean handshake() 
+	{
+		Envelope response, e;
+		byte[] r1, r2, keyBytes;
+		try{
+			//HANDSHAKE: send public key
+			response = new Envelope("PUBKEY");
+			response.addObject(my_fs.RSAKeys.getPublic());
+			output.writeObject(response);
+			//Challenge 1
+			e = (Envelope)input.readObject();
+			if(!e.getMessage().equals("R1") || e.getObjContents().size()!=2) {
+				throw new Exception("Challenge 1 Failure");
+			}
+			System.out.println("Request received: " + e.getMessage());
+			//Decrypt message
+			r1 = crypto.rsaDecrypt((byte[])e.getObjContents().get(0), my_fs.RSAKeys.getPrivate());
+			keyBytes = crypto.rsaDecrypt((byte[])e.getObjContents().get(1), my_fs.RSAKeys.getPrivate());
+			AESKey = new SecretKeySpec(keyBytes, "AES");
+			//System.out.println("R1 = "+ (new String(crypto.rsaDecrypt(r1, my_fs.RSAKeys.getPrivate()))));
+			//Generate new nonce
+			r2 = crypto.generateRandomBytes(32);
+			//System.out.println("R2 = "+(new String(r2)));
+			//Challenge 1 Response
+			response = new Envelope("R2");
+			response.addObject(r1);
+			response.addObject(r2);
+			output.writeObject(crypto.encrypt(response, AESKey));
+			//Validate Challenge 2
+			e = crypto.decrypt((Envelope)input.readObject(), AESKey);
+			r1 = (byte[])e.getObjContents().get(0);
+			if(!e.getMessage().equals("R2_RESPONSE") || e.getObjContents().size()!=1 || !Arrays.equals(r1, r2)) {
+				throw new Exception("Challenge 2 Failure");
+			}
+			//Return an OK message
+			e = new Envelope("OK");
+			output.writeObject(crypto.encrypt(e, AESKey));
+			return true;
+		} catch (Exception ex){
+			System.err.println("Error: " + ex.getMessage());
+			ex.printStackTrace(System.err);
+			return false;
 		}
 	}
 }

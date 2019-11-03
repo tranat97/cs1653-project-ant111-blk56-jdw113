@@ -49,7 +49,7 @@ public class GroupThread extends Thread
 			// generating and sending AES key
 			AESKey = crypto.generateAESKey();
 			response = new Envelope("AESKEY");
-			response.addObject(crypto.encryptAESKey(AESKey, clientPublicKey));
+			response.addObject(crypto.rsaEncrypt(AESKey.getEncoded(), clientPublicKey));
 			output.writeObject(response);
 			/* After this point, all envelope sending and receiving will
 			*  be done through send and recieve methods. These methods

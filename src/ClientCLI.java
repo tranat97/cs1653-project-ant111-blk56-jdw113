@@ -13,12 +13,20 @@ public class ClientCLI
 
 	public static void main(String[] args)
 	{
-		connect("GroupServer", groupClient);
-		//groupClient.connect("localhost", 8765);
+		//connect("GroupServer", groupClient);
+		groupClient.connect("localhost", 8765);
 		groupClient.getRSAKeys("ClientPublic.rsa", "ClientPrivate.rsa");
 		groupClient.handshake();
-		connect("FileServer", fileClient);
-		//fileClient.connect("localhost", 4321);
+		
+		boolean connected = true;
+		do {
+			//connect("FileServer", fileClient);
+			fileClient.connect("localhost", 4321);
+			if(!fileClient.handshake()){
+				fileClient.disconnect();
+				connected = false;
+			}
+		} while(!connected);
 		login();
 
 		String command;
