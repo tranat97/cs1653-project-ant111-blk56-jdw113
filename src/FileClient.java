@@ -8,9 +8,11 @@ import java.security.PublicKey;
 
 public class FileClient extends Client implements FileClientInterface
 {
+    Hashtable<String, byte[]> knownKeys;
 	public FileClient()
 	{
 		crypto = new Crypto();
+        knownKeys = null;
 	}
 	//Authentication of the File Server
 	public boolean handshake()
@@ -26,7 +28,7 @@ public class FileClient extends Client implements FileClientInterface
 			}
 			//extract public key, hash it and display
 			serverPublicKey = (PublicKey) response.getObjContents().get(0);
-			System.out.println("File Server Public Key: "+new String(crypto.hash(new String(serverPublicKey.getEncoded()))));
+			System.out.println("File Server Public Key: "+crypto.bytesToHex(crypto.hash(serverPublicKey.getEncoded())));
 			do {
 				System.out.print("Do you trust this key? (y/n): ");
 				ans = in.next();

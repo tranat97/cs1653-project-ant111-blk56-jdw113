@@ -20,13 +20,14 @@ public class ClientCLI
 		
 		boolean connected = true;
 		do {
-			//connect("FileServer", fileClient);
-			fileClient.connect("localhost", 4321);
+			connect("FileServer", fileClient);
+			//fileClient.connect("localhost", 4321);
 			if(!fileClient.handshake()){
 				fileClient.disconnect();
 				connected = false;
 			}
 		} while(!connected);
+        System.out.println("Handshake Successful; Connected to File Server...");
 		login();
 
 		String command;

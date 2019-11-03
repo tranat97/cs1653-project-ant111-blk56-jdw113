@@ -68,11 +68,11 @@ public class Crypto
 		return result;
 	}
 
-	public byte[] hash(String s)
+	public byte[] hash(byte[] plaintext)
 	{
 		try {
 			MessageDigest md = MessageDigest.getInstance("SHA-256");
-			return md.digest(s.getBytes());
+			return md.digest(plaintext);
 		} catch (GeneralSecurityException e) {
 			System.err.println("Failed to hash");
 			e.printStackTrace();
@@ -264,13 +264,69 @@ public class Crypto
 		}
 		return RSAKeys;
 	}
+    
+//    public PublicKey getServerPublic(final String path)
+//	{
+//		final File publicFile = new File(path);
+//		PublicKey pub = null;
+//
+//		// if keys already exist
+//		if (publicFile.exists()) {
+//			try {
+//				FileInputStream fis = new FileInputStream(publicFile);
+//				ObjectInputStream ois = new ObjectInputStream(fis);
+//				pub = (PublicKey)ois.readObject();
+//				ois.close();
+//				fis.close();
+//                
+//				ois = new ObjectInputStream(fis);
+//				final PrivateKey priv = (PrivateKey)ois.readObject();
+//				ois.close();
+//				fis.close();
+//
+//				RSAKeys = new KeyPair(pub, priv);
+//				System.out.println("RSA key pair found");
+//			} catch (IOException e) {
+//				System.err.println("Error reading existing keys");
+//				return null;
+//			} catch (ClassNotFoundException e) {
+//				System.err.println("Error reading existing keys");
+//				return null;
+//			}
+//		} else {
+//			System.out.println("RSA key pair not found, generating...");
+//			RSAKeys = generateRSAKeys();
+//			if (RSAKeys == null) {
+//				return null;
+//			}
+//
+//			try {
+//				// writing new keypair to files
+//				FileOutputStream fos = new FileOutputStream(publicFile);
+//				ObjectOutputStream oos = new ObjectOutputStream(fos);
+//				oos.writeObject(RSAKeys.getPublic());
+//				oos.close();
+//				fos.close();
+//
+//				fos = new FileOutputStream(privateFile);
+//				oos = new ObjectOutputStream(fos);
+//				oos.writeObject(RSAKeys.getPrivate());
+//				oos.close();
+//				fos.close();
+//				System.out.println("Saved keys to files");
+//			} catch (IOException e) {
+//				System.err.println("Error writing new keys");
+//			}
+//		}
+//		return RSAKeys;
+//	}
 
-	private byte[] hexToBytes(String hex)
+	public byte[] hexToBytes(String hex)
 	{
 		return DatatypeConverter.parseHexBinary(hex);
 	}
 
-	private String bytesToHex(byte[] bytes)
+	public String bytesToHex(byte[] bytes)
 	{
 		return DatatypeConverter.printHexBinary(bytes);
 	}

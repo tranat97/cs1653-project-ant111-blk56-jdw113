@@ -258,9 +258,11 @@ public class FileThread extends Thread
 			if(!e.getMessage().equals("R2_RESPONSE") || e.getObjContents().size()!=1 || !Arrays.equals(r1, r2)) {
 				throw new Exception("Challenge 2 Failure");
 			}
+            System.out.println("Request received: " + e.getMessage());
 			//Return an OK message
 			e = new Envelope("OK");
 			output.writeObject(crypto.encrypt(e, AESKey));
+            System.out.println("Handshake Successful; Connected to Host on "+socket.getInetAddress()+"...");
 			return true;
 		} catch (Exception ex){
 			System.err.println("Error: " + ex.getMessage());
