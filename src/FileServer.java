@@ -10,6 +10,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.KeyPair;
 import java.security.Key;
+import java.security.PublicKey;
 
 public class FileServer extends Server
 {
@@ -17,7 +18,8 @@ public class FileServer extends Server
 	public Crypto crypto;
 	public static FileList fileList;
 	public KeyPair RSAKeys;
-
+	public PublicKey trustedGroupServer;
+	
 	public FileServer()
 	{
 		super(SERVER_PORT, "FilePile");
@@ -31,6 +33,15 @@ public class FileServer extends Server
 	public void start()
 	{
 		crypto = new Crypto();
+
+		trustedGroupServer = crypto.getPublicKey("GroupPublic.rsa");
+		if (trustedGroupServer == null) {
+			System.out.println("Missing GroupPublic.rsa file, cannot trust any tokens");
+			System.exit(-1);
+		} else {
+			System.out.println("Found GroupPublic.rsa");
+		}
+
 		String fileFile = "FileList.bin";
 		ObjectInputStream fileStream;
 

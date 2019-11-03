@@ -49,8 +49,17 @@ public class GroupServer extends Server
 		} catch(FileNotFoundException e) {
 			System.out.println("UserList File Does Not Exist. Creating UserList...");
 			System.out.println("No users currently exist. Your account will be the administrator.");
-			System.out.print("Enter your username: ");
-			String username = console.nextLine();
+			boolean validUserName = false;
+			String username;
+			do {
+				System.out.print("Enter your username: ");
+				username = console.nextLine();
+				if (invalidCharacters(username)) {
+					System.out.println("Invalid username, cannot contain \':\'");
+				} else {
+					validUserName = true;
+				}
+			} while (!validUserName);
 			System.out.print("Enter your password: ");
 			String password = console.nextLine();
 
@@ -89,6 +98,11 @@ public class GroupServer extends Server
 			System.err.println("Error: " + e.getMessage());
 			e.printStackTrace(System.err);
 		}
+	}
+
+	public boolean invalidCharacters(String s)
+	{
+		return s.contains(":");
 	}
 }
 

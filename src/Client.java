@@ -3,7 +3,6 @@ import java.net.UnknownHostException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.Key;
 
@@ -15,7 +14,6 @@ public abstract class Client {
 	protected Socket sock;
 	protected ObjectOutputStream output;
 	protected ObjectInputStream input;
-	protected KeyPair RSAKeys;
 	protected PublicKey serverPublicKey;
 	protected Key AESKey;
 	protected Crypto crypto;
@@ -70,11 +68,6 @@ public abstract class Client {
 		output.writeObject(crypto.encrypt(e, AESKey));
 	}
 
-	public boolean getRSAKeys(String publicPath, String privatePath)
-	{
-		RSAKeys = crypto.getRSAKeys(publicPath, privatePath);
-		return RSAKeys == null;
-	}
     
     public boolean getServerPublic(String path) {
         

@@ -13,21 +13,26 @@ public class ClientCLI
 
 	public static void main(String[] args)
 	{
-		//connect("GroupServer", groupClient);
-		groupClient.connect("localhost", 8765);
-		groupClient.getRSAKeys("ClientPublic.rsa", "ClientPrivate.rsa");
-		groupClient.handshake();
-		
 		boolean connected = true;
 		do {
-			connect("FileServer", fileClient);
-			//fileClient.connect("localhost", 4321);
+			//connect("GroupServer", groupClient);
+			groupClient.connect("localhost", 8765);
+			if (!groupClient.handshake()) {
+				groupClient.disconnect();
+				connected = false;
+			}
+
+		} while (!connected);
+		System.out.println("Handshake Successful; Connected to Group Server...");
+		do {
+			//connect("FileServer", fileClient);
+			fileClient.connect("localhost", 4321);
 			if(!fileClient.handshake()){
 				fileClient.disconnect();
 				connected = false;
 			}
 		} while(!connected);
-        System.out.println("Handshake Successful; Connected to File Server...");
+		System.out.println("Handshake Successful; Connected to File Server...");
 		login();
 
 		String command;
@@ -40,6 +45,9 @@ public class ClientCLI
 				printHelp();
 			} else if (command.equals("changeuser")) {
 				login();
+				refreshToken();
+			} else if (command.equals("changepassword")) {
+				changePassword();
 				refreshToken();
 			} else if (command.equals("createuser")) {
 				createUser();
@@ -119,7 +127,19 @@ public class ClientCLI
 		System.out.println("FileServer commands:");
 		System.out.println("\tlistfiles\n\tupload\n\tdownload\n\tdelete\n\t");
 		System.out.println("Other commands:");
-		System.out.println("\tchangeuser\n\thelp\n\texit");
+		System.out.println("\tchangeuser\n\tchangepassword\n\thelp\n\texit");
+	}
+
+	public static void changePassword()
+	{
+		System.out.print("Enter your new password: ");
+		final String newPassword = scan.nextLine();
+		if (groupClient.changePassword(newPassword, token)) {
+			password = newPassword;
+			System.out.println("Successfully changed password");
+		} else {
+			System.out.println("Failed to change password");
+		}
 	}
 
 	public static void createUser()
