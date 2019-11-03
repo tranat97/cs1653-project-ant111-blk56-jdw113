@@ -14,17 +14,8 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.xml.bind.DatatypeConverter;
-import java.io.ByteArrayOutputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ObjectOutputStream;
-import java.io.ObjectInputStream;
-import java.io.FileOutputStream;
-import java.io.FileInputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
+import java.io.*;
+import java.util.*;
 
 public class Crypto
 {
@@ -264,62 +255,6 @@ public class Crypto
 		}
 		return RSAKeys;
 	}
-    
-//    public PublicKey getServerPublic(final String path)
-//	{
-//		final File publicFile = new File(path);
-//		PublicKey pub = null;
-//
-//		// if keys already exist
-//		if (publicFile.exists()) {
-//			try {
-//				FileInputStream fis = new FileInputStream(publicFile);
-//				ObjectInputStream ois = new ObjectInputStream(fis);
-//				pub = (PublicKey)ois.readObject();
-//				ois.close();
-//				fis.close();
-//                
-//				ois = new ObjectInputStream(fis);
-//				final PrivateKey priv = (PrivateKey)ois.readObject();
-//				ois.close();
-//				fis.close();
-//
-//				RSAKeys = new KeyPair(pub, priv);
-//				System.out.println("RSA key pair found");
-//			} catch (IOException e) {
-//				System.err.println("Error reading existing keys");
-//				return null;
-//			} catch (ClassNotFoundException e) {
-//				System.err.println("Error reading existing keys");
-//				return null;
-//			}
-//		} else {
-//			System.out.println("RSA key pair not found, generating...");
-//			RSAKeys = generateRSAKeys();
-//			if (RSAKeys == null) {
-//				return null;
-//			}
-//
-//			try {
-//				// writing new keypair to files
-//				FileOutputStream fos = new FileOutputStream(publicFile);
-//				ObjectOutputStream oos = new ObjectOutputStream(fos);
-//				oos.writeObject(RSAKeys.getPublic());
-//				oos.close();
-//				fos.close();
-//
-//				fos = new FileOutputStream(privateFile);
-//				oos = new ObjectOutputStream(fos);
-//				oos.writeObject(RSAKeys.getPrivate());
-//				oos.close();
-//				fos.close();
-//				System.out.println("Saved keys to files");
-//			} catch (IOException e) {
-//				System.err.println("Error writing new keys");
-//			}
-//		}
-//		return RSAKeys;
-//	}
 
 	public byte[] hexToBytes(String hex)
 	{

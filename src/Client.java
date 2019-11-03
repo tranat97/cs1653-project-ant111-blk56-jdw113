@@ -76,8 +76,4 @@ public abstract class Client {
 		return RSAKeys == null;
 	}
     
-    public boolean getServerPublic(String path) {
-        
-        return serverPublicKey == null;
-    }
 }
