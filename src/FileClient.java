@@ -136,11 +136,11 @@ public class FileClient extends Client implements FileClientInterface
 			remotePath = filename;
 		}
 		Envelope env = new Envelope("DELETEF"); //Success
-		env.addObject(remotePath);
 		env.addObject(token);
+		env.addObject(remotePath);
 		try {
-			output.writeObject(env);
-			env = (Envelope)input.readObject();
+			send(env);
+			env = receive();
 
 			if (env.getMessage().compareTo("OK")==0) {
 				System.out.printf("File %s deleted successfully\n", filename);
@@ -148,10 +148,8 @@ public class FileClient extends Client implements FileClientInterface
 				System.out.printf("Error deleting file %s (%s)\n", filename, env.getMessage());
 				return false;
 			}
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		} catch (ClassNotFoundException e1) {
-			e1.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 
 		return true;
@@ -170,18 +168,18 @@ public class FileClient extends Client implements FileClientInterface
 				FileOutputStream fos = new FileOutputStream(file);
 
 				Envelope env = new Envelope("DOWNLOADF"); //Success
-				env.addObject(sourceFile);
 				env.addObject(token);
-				output.writeObject(env);
+				env.addObject(sourceFile);
+				send(env);
 
-				env = (Envelope)input.readObject();
+				env = receive();
 
 				while (env.getMessage().compareTo("CHUNK")==0) {
 					fos.write((byte[])env.getObjContents().get(0), 0, (Integer)env.getObjContents().get(1));
 					System.out.printf(".");
 					env = new Envelope("DOWNLOADF"); //Success
-					output.writeObject(env);
-					env = (Envelope)input.readObject();
+					send(env);
+					env = receive();
 				}
 				fos.close();
 
@@ -189,7 +187,7 @@ public class FileClient extends Client implements FileClientInterface
 					fos.close();
 					System.out.printf("\nTransfer successful file %s\n", sourceFile);
 					env = new Envelope("OK"); //Success
-					output.writeObject(env);
+					send(env);
 				} else {
 					System.out.printf("Error reading file %s (%s)\n", sourceFile, env.getMessage());
 					file.delete();
@@ -202,7 +200,7 @@ public class FileClient extends Client implements FileClientInterface
 		} catch (IOException e1) {
 			System.out.printf("Error couldn't create file %s\n", destFile);
 			return false;
-		} catch (ClassNotFoundException e1) {
+		} catch (Exception e1) {
 			e1.printStackTrace();
 			return false;
 		}
@@ -217,9 +215,9 @@ public class FileClient extends Client implements FileClientInterface
 			//Tell the server to return the member list
 			message = new Envelope("LFILES");
 			message.addObject(token); //Add requester's token
-			output.writeObject(message);
+			send(message);
 
-			e = (Envelope)input.readObject();
+			e = receive();
 
 			//If server indicates success, return the member list
 			if(e.getMessage().equals("OK")) {
@@ -247,13 +245,13 @@ public class FileClient extends Client implements FileClientInterface
 			Envelope message = null, env = null;
 			//Tell the server to return the member list
 			message = new Envelope("UPLOADF");
+			message.addObject(token); //Add requester's token
 			message.addObject(destFile);
 			message.addObject(group);
-			message.addObject(token); //Add requester's token
-			output.writeObject(message);
+			send(message);
 
 			FileInputStream fis = new FileInputStream(sourceFile);
-			env = (Envelope)input.readObject();
+			env = receive();
 
 			//If server indicates success, return the member list
 			if(env.getMessage().equals("READY")) {
@@ -280,15 +278,15 @@ public class FileClient extends Client implements FileClientInterface
 
 				message.addObject(buf);
 				message.addObject(new Integer(n));
-				output.writeObject(message);
-				env = (Envelope)input.readObject();
+				send(message);
+				env = receive();
 			} while (fis.available()>0);
 
 			//If server indicates success, return the member list
 			if(env.getMessage().compareTo("READY")==0) {
 				message = new Envelope("EOF");
-				output.writeObject(message);
-				env = (Envelope)input.readObject();
+				send(message);
+				env = receive();
 				if(env.getMessage().compareTo("OK")==0) {
 					System.out.printf("\nFile data upload successful\n");
 				} else {

@@ -29,6 +29,16 @@ public class UserList implements java.io.Serializable
 		return list.get(username).checkPassword(password);
 	}
 
+	public synchronized boolean setPassword(String username, String password)
+	{
+		if (checkUser(username) && password != null) {
+			list.get(username).setPassword(password);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	public synchronized ArrayList<String> getUserGroups(String username)
 	{
 		return list.get(username).getGroups();
@@ -87,6 +97,11 @@ public class UserList implements java.io.Serializable
 		public boolean checkPassword(String password)
 		{
 			return this.password.equals(password);
+		}
+
+		public void setPassword(String password)
+		{
+			this.password = password;
 		}
 
 		public ArrayList<String> getGroups()

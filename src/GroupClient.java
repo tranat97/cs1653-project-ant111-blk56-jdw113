@@ -4,9 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.io.ObjectInputStream;
 import java.security.PublicKey;
+import java.security.KeyPair;
 import javax.crypto.spec.SecretKeySpec;
 
 public class GroupClient extends Client implements GroupClientInterface {
+
+	private KeyPair RSAKeys;
 
 	public GroupClient()
 	{
@@ -15,6 +18,9 @@ public class GroupClient extends Client implements GroupClientInterface {
 
 	public boolean handshake()
 	{
+		if (!getRSAKeys("ClientPublic.rsa", "ClientPrivate.rsa")) {
+			return false;
+		}
 		try {
 			Envelope message = null, response = null;
 			// Receiving server's public key
@@ -34,13 +40,18 @@ public class GroupClient extends Client implements GroupClientInterface {
 			}
 			byte[] result = crypto.rsaDecrypt((byte [])response.getObjContents().get(0), RSAKeys.getPrivate());
 			AESKey = new SecretKeySpec(result, "AES");
-			//AESKey = crypto.rsaDecrypt((byte [])response.getObjContents().get(0), RSAKeys.getPrivate());
 		} catch (Exception e) {
 			System.err.println("Error: " + e.getMessage());
 			e.printStackTrace(System.err);
 			return false;
 		}
 		return true;
+	}
+
+	private boolean getRSAKeys(String publicPath, String privatePath)
+	{
+		RSAKeys = crypto.getRSAKeys(publicPath, privatePath);
+		return RSAKeys != null;
 	}
 
 	public UserToken getToken(String username, String password)
@@ -78,15 +89,39 @@ public class GroupClient extends Client implements GroupClientInterface {
 		return null;
 	}
 
+	public boolean changePassword(String password, UserToken token)
+	{
+		try {
+			Envelope message = null, response = null;
+
+			//Tell the server to change password
+			message = new Envelope("CPASSWORD");
+			message.addObject(token);
+			message.addObject(password);
+			send(message);
+
+			//Get the response from the server
+			response = receive();
+
+			if (response.getMessage().equals("OK")) {
+				return true;
+			} 
+		} catch (Exception e) {
+			System.err.println("Error: " + e.getMessage());
+			e.printStackTrace(System.err);
+		}
+		return false;
+	}
+
 	public boolean createUser(String username, String password, UserToken token)
 	{
 		try {
 			Envelope message = null, response = null;
 			//Tell the server to create a user
 			message = new Envelope("CUSER");
+			message.addObject(token); //Add the requester's token
 			message.addObject(username); //Add user name string
 			message.addObject(password);
-			message.addObject(token); //Add the requester's token
 			send(message);
 
 			response = receive();
@@ -94,6 +129,8 @@ public class GroupClient extends Client implements GroupClientInterface {
 			//If server indicates success, return true
 			if (response.getMessage().equals("OK")) {
 				return true;
+			} else if (response.getMessage().equals("INVALID_USERNAME")) {
+				System.out.println(username + " contains an invalid character");
 			}
 		} catch (Exception e) {
 			System.err.println("Error: " + e.getMessage());
@@ -110,8 +147,8 @@ public class GroupClient extends Client implements GroupClientInterface {
 
 			//Tell the server to delete a user
 			message = new Envelope("DUSER");
-			message.addObject(username); //Add user name
 			message.addObject(token);  //Add requester's token
+			message.addObject(username); //Add user name
 			send(message);
 
 			response = receive();
@@ -132,8 +169,8 @@ public class GroupClient extends Client implements GroupClientInterface {
 			Envelope message = null, response = null;
 			//Tell the server to create a group
 			message = new Envelope("CGROUP");
-			message.addObject(groupname); //Add the group name string
 			message.addObject(token); //Add the requester's token
+			message.addObject(groupname); //Add the group name string
 			send(message);
 
 			response = receive();
@@ -141,6 +178,8 @@ public class GroupClient extends Client implements GroupClientInterface {
 			//If server indicates success, return true
 			if (response.getMessage().equals("OK")) {
 				return true;
+			} else if (response.getMessage().equals("INVALID_GROUPNAME")) {
+				System.out.println(groupname + " contains an invalid character");
 			}
 		} catch (Exception e) {
 			System.err.println("Error: " + e.getMessage());
@@ -156,8 +195,8 @@ public class GroupClient extends Client implements GroupClientInterface {
 			Envelope message = null, response = null;
 			//Tell the server to delete a group
 			message = new Envelope("DGROUP");
-			message.addObject(groupname); //Add group name string
 			message.addObject(token); //Add requester's token
+			message.addObject(groupname); //Add group name string
 			send(message);
 
 			response = receive();
@@ -179,8 +218,8 @@ public class GroupClient extends Client implements GroupClientInterface {
 			Envelope message = null, response = null;
 			//Tell the server to return the member list
 			message = new Envelope("LMEMBERS");
-			message.addObject(group); //Add group name string
 			message.addObject(token); //Add requester's token
+			message.addObject(group); //Add group name string
 			send(message);
 
 			response = receive();
@@ -202,9 +241,9 @@ public class GroupClient extends Client implements GroupClientInterface {
 			Envelope message = null, response = null;
 			//Tell the server to add a user to the group
 			message = new Envelope("AUSERTOGROUP");
+			message.addObject(token); //Add requester's token
 			message.addObject(username); //Add user name string
 			message.addObject(groupname); //Add group name string
-			message.addObject(token); //Add requester's token
 			send(message);
 
 			response = receive();
@@ -226,9 +265,9 @@ public class GroupClient extends Client implements GroupClientInterface {
 			Envelope message = null, response = null;
 			//Tell the server to remove a user from the group
 			message = new Envelope("RUSERFROMGROUP");
+			message.addObject(token); //Add requester's token
 			message.addObject(username); //Add user name string
 			message.addObject(groupname); //Add group name string
-			message.addObject(token); //Add requester's token
 			send(message);
 
 			response = receive();

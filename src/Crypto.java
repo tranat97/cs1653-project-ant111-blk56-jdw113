@@ -198,36 +198,56 @@ public class Crypto
 		return randBytes;
 	}
 
-	public KeyPair getRSAKeys(final String publicPath, final String privatePath)
+	public PublicKey getPublicKey(final String publicPath)
 	{
 		final File publicFile = new File(publicPath);
-		final File privateFile = new File(privatePath);
-		KeyPair RSAKeys = null;
-
-		// if keys already exist
-		if (publicFile.exists() && privateFile.exists()) {
+		if (publicFile.exists()) {
 			try {
 				FileInputStream fis = new FileInputStream(publicFile);
 				ObjectInputStream ois = new ObjectInputStream(fis);
 				final PublicKey pub = (PublicKey)ois.readObject();
 				ois.close();
 				fis.close();
+				return pub;
+			} catch (Exception e) {
+				System.err.println("Error reading existing public key");
+				e.printStackTrace();
+			}
+		} 
+		return null;
+	}
 
-				fis = new FileInputStream(privateFile);
-				ois = new ObjectInputStream(fis);
+	public PrivateKey getPrivateKey(final String privatePath)
+	{
+		final File privateFile = new File(privatePath);
+		if (privateFile.exists()) {
+			try {
+				FileInputStream fis = new FileInputStream(privateFile);
+				ObjectInputStream ois = new ObjectInputStream(fis);
 				final PrivateKey priv = (PrivateKey)ois.readObject();
 				ois.close();
 				fis.close();
-
-				RSAKeys = new KeyPair(pub, priv);
-				System.out.println("RSA key pair found");
-			} catch (IOException e) {
-				System.err.println("Error reading existing keys");
-				return null;
-			} catch (ClassNotFoundException e) {
-				System.err.println("Error reading existing keys");
-				return null;
+				return priv;
+			} catch (Exception e) {
+				System.err.println("Error reading existing private key");
+				e.printStackTrace();
 			}
+		}
+		return null;
+	}
+
+	public KeyPair getRSAKeys(final String publicPath, final String privatePath)
+	{
+		final File publicFile = new File(publicPath);
+		final File privateFile = new File(privatePath);
+		final PublicKey pub = getPublicKey(publicPath);
+		final PrivateKey priv = getPrivateKey(privatePath);
+		KeyPair RSAKeys = null;
+
+		// if keys already exist
+		if (pub != null && priv != null) {
+			RSAKeys = new KeyPair(pub, priv);
+			System.out.println("RSA key pair found");
 		} else {
 			System.out.println("RSA key pair not found, generating...");
 			RSAKeys = generateRSAKeys();

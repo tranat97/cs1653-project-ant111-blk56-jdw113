@@ -2,7 +2,7 @@ pwd = $(shell pwd)
 bc = bcprov-jdk15on-164.jar
 
 clean:
-	rm *.class *.bin *.rsa
+	rm -rf shared_files *.class *.bin *.rsa
 
 all:
 	javac -cp .:$(pwd)/$(bc) *.java
@@ -15,4 +15,3 @@ RunFileServer: all
 
 ClientCLI: all
 	java -cp .:$(pwd)/$(bc) ClientCLI
-
