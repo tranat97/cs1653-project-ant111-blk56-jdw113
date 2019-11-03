@@ -1,12 +1,78 @@
 /* FileClient provides all the client functionality regarding the file server */
-import java.io.File;
+import java.io.*;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.List;
+import java.util.*;
+import java.security.PublicKey;
 
 public class FileClient extends Client implements FileClientInterface
 {
+    Hashtable<String, byte[]> knownKeys;
+	public FileClient()
+	{
+		crypto = new Crypto();
+        knownKeys = null;
+	}
+	//Authentication of the File Server
+	public boolean handshake()
+	{
+		String ans = null;
+		Envelope message = null, response = null;
+		Scanner in = new Scanner(System.in);
+		byte[] r1 = null, r2 = null;
+		try {			
+			response = (Envelope) input.readObject();
+			if (!response.getMessage().equals("PUBKEY") || response.getObjContents().size() != 1) {
+				return false;
+			}
+			//extract public key, hash it and display
+			serverPublicKey = (PublicKey) response.getObjContents().get(0);
+			System.out.println("File Server Public Key: "+crypto.bytesToHex(crypto.hash(serverPublicKey.getEncoded())));
+			do {
+				System.out.print("Do you trust this key? (y/n): ");
+				ans = in.next();
+				if (ans.toLowerCase().equals("n")) {
+					return false;
+				}
+			} while (!ans.toLowerCase().equals("y"));
+			
+			//CHALLENGE START
+			//generate values
+			AESKey = crypto.generateAESKey();
+			r1 = crypto.generateRandomBytes(32);
+			//System.out.println("R1 = "+(new String(r1)));
+			//encrypt envelope using rsa
+			message = new Envelope("R1");
+			message.addObject(crypto.rsaEncrypt(r1, serverPublicKey));
+			message.addObject(crypto.rsaEncrypt(AESKey.getEncoded(), serverPublicKey));
+			output.writeObject(message);
+			//Recieve R2 validate R1
+			response = crypto.decrypt((Envelope) input.readObject(), AESKey);
+			r2 = (byte[])response.getObjContents().get(0);
+			if (!response.getMessage().equals("R2") || response.getObjContents().size()!=2 || !Arrays.equals(r1, r2)) {
+				throw new Exception("Challenge 1 failure");
+			}
+			//Challenge 2 Response
+			r2 = (byte[])response.getObjContents().get(1);
+			//System.out.println("R2 = "+(new String(r2)));
+			message = new Envelope("R2_RESPONSE");
+			message.addObject(r2);
+			output.writeObject(crypto.encrypt(message, AESKey));
+			//Recieve OK message
+			response = crypto.decrypt((Envelope)input.readObject(), AESKey);
+			if (!response.getMessage().equals("OK") || response.getObjContents().size()!=0) {
+				throw new Exception("Challenge 2 failure");
+			}
+			
+			return true;
+		} catch (Exception e) {
+			System.err.println("Error: " + e.getMessage());
+			e.printStackTrace(System.err);
+			return false;
+		}
+	}
+	
 	public boolean delete(String filename, UserToken token)
 	{
 		String remotePath;

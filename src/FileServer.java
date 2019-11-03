@@ -8,11 +8,15 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.KeyPair;
+import java.security.Key;
 
 public class FileServer extends Server
 {
 	public static final int SERVER_PORT = 4321;
+	public Crypto crypto;
 	public static FileList fileList;
+	public KeyPair RSAKeys;
 
 	public FileServer()
 	{
@@ -26,6 +30,7 @@ public class FileServer extends Server
 
 	public void start()
 	{
+		crypto = new Crypto();
 		String fileFile = "FileList.bin";
 		ObjectInputStream fileStream;
 
@@ -33,7 +38,7 @@ public class FileServer extends Server
 		Runtime runtime = Runtime.getRuntime();
 		Thread catchExit = new Thread(new ShutDownListenerFS());
 		runtime.addShutdownHook(catchExit);
-
+		
 		//Open user file to get user list
 		try {
 			FileInputStream fis = new FileInputStream(fileFile);
@@ -58,7 +63,9 @@ public class FileServer extends Server
 		} else {
 			System.out.println("Error creating shared_files directory");
 		}
-
+		//Read in saved RSA Key pair or or generate new pair
+		RSAKeys = crypto.getRSAKeys("FilePublic.rsa", "FilePrivate.rsa");
+		System.out.println("Your Public Key: "+crypto.bytesToHex(crypto.hash(RSAKeys.getPublic().getEncoded())));
 		//Autosave Daemon. Saves lists every 5 minutes
 		AutoSaveFS aSave = new AutoSaveFS();
 		aSave.setDaemon(true);
@@ -74,7 +81,7 @@ public class FileServer extends Server
 
 			while(running) {
 				sock = serverSock.accept();
-				thread = new FileThread(sock);
+				thread = new FileThread(sock,this);
 				thread.start();
 			}
 
@@ -84,6 +91,11 @@ public class FileServer extends Server
 			e.printStackTrace(System.err);
 		}
 	}
+	
+//	public Key getPublic()
+//	{
+//		return RSAKeys.getPublic();
+//	}
 }
 
 //This thread saves user and group lists

@@ -75,4 +75,9 @@ public abstract class Client {
 		RSAKeys = crypto.getRSAKeys(publicPath, privatePath);
 		return RSAKeys == null;
 	}
+    
+    public boolean getServerPublic(String path) {
+        
+        return serverPublicKey == null;
+    }
 }
