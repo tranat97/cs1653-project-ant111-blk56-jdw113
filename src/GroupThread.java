@@ -112,7 +112,9 @@ public class GroupThread extends Thread
 						List<String> groupsDeleted = deleteUser(username, yourToken);
 						if (groupsDeleted != null) {
 							response = new Envelope("OK"); //Success
-							response.addObject(groupsDeleted);
+							UserToken deleted = new Token(my_gs.name, ":DELETEDGROUPS:", groupsDeleted);
+							crypto.sign(my_gs.RSAKeys.getPrivate(), deleted);
+							response.addObject(deleted);
 							send(response);
 						} else {
 							sendFail();
@@ -154,7 +156,9 @@ public class GroupThread extends Thread
 							response = new Envelope("OK"); //Success
 							ArrayList<String> groupsDeleted = new ArrayList<String>();
 							groupsDeleted.add(groupname);
-							response.addObject((List<String>) groupsDeleted);
+							UserToken deleted = new Token(my_gs.name, ":DELETEDGROUPS:", groupsDeleted);
+							crypto.sign(my_gs.RSAKeys.getPrivate(), deleted);
+							response.addObject(deleted);
 							send(response);
 						} else {
 							sendFail();
@@ -214,7 +218,9 @@ public class GroupThread extends Thread
 							} else {
 								my_gs.userList.removeGroup(username, groupname); //remove member from group
 							}
-							response.addObject((List<String>)groupsDeleted);
+							UserToken deleted = new Token(my_gs.name, ":DELETEDGROUPS:", groupsDeleted);
+							crypto.sign(my_gs.RSAKeys.getPrivate(), deleted);
+							response.addObject(deleted);
 							send(response);
 						} else {
 							sendFail();

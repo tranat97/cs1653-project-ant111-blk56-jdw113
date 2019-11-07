@@ -140,7 +140,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 	}
 
 	@SuppressWarnings("unchecked")
-	public List<String> deleteUser(String username, UserToken token)
+	public UserToken deleteUser(String username, UserToken token)
 	{
 		try {
 			Envelope message = null, response = null;
@@ -155,7 +155,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 
 			//If server indicates success, return true
 			if (response.getMessage().equals("OK")) {
-				return (List<String>) response.getObjContents().get(0);
+				return (UserToken) response.getObjContents().get(0);
 			}
 		} catch (Exception e) {
 			System.err.println("Error: " + e.getMessage());
@@ -189,7 +189,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 	}
 
 	@SuppressWarnings("unchecked")
-	public List<String> deleteGroup(String groupname, UserToken token)
+	public UserToken deleteGroup(String groupname, UserToken token)
 	{
 		try {
 			Envelope message = null, response = null;
@@ -202,7 +202,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 			response = receive();
 			//If server indicates success, return true
 			if (response.getMessage().equals("OK")) {
-				return (List<String>) response.getObjContents().get(0);
+				return (UserToken) response.getObjContents().get(0);
 			}
 		} catch (Exception e) {
 			System.err.println("Error: " + e.getMessage());
@@ -259,7 +259,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 	}
 
 	@SuppressWarnings("unchecked")
-	public List<String> deleteUserFromGroup(String username, String groupname, UserToken token)
+	public UserToken deleteUserFromGroup(String username, String groupname, UserToken token)
 	{
 		try {
 			Envelope message = null, response = null;
@@ -273,7 +273,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 			response = receive();
 			//If server indicates success, return true
 			if (response.getMessage().equals("OK")) {
-				return (List<String>)response.getObjContents().get(0);
+				return (UserToken)response.getObjContents().get(0);
 			}
 		} catch (Exception e) {
 			System.err.println("Error: " + e.getMessage());
