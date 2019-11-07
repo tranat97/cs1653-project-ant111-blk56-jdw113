@@ -159,13 +159,12 @@ public class ClientCLI
 	{
 		System.out.print("Enter username to be deleted: ");
 		final String username = scan.nextLine();
-		List<String> groupsDeleted = groupClient.deleteUser(username, token);
+		UserToken groupsDeleted = groupClient.deleteUser(username, token);
 		if (groupsDeleted != null) {
 			System.out.println("Successfully deleted user: " + username);
-			if (!groupsDeleted.isEmpty()) {
-				System.out.println(username+"'s owned groups: "+groupsDeleted);
-				Token newTok = new Token(null, null, groupsDeleted);
-				fileClient.condFileDelete(groupsDeleted, newTok);
+			if (!groupsDeleted.getGroups().isEmpty()) {
+				System.out.println(username + "'s owned groups: " + groupsDeleted.getGroups());
+				fileClient.condFileDelete(groupsDeleted);
 			}
 		} else {
 			System.out.println("Failed to delete user: " + username);
@@ -187,10 +186,9 @@ public class ClientCLI
 	{
 		System.out.print("Enter the name of the group to be deleted: ");
 		final String groupName = scan.nextLine();
-		List<String> groupsDeleted = groupClient.deleteGroup(groupName, token);
+		UserToken groupsDeleted = groupClient.deleteGroup(groupName, token);
 		if (groupsDeleted != null) {
-			Token newTok = new Token(null, null, groupsDeleted);
-			fileClient.condFileDelete(groupsDeleted, newTok);
+			fileClient.condFileDelete(groupsDeleted);
 			System.out.println("Successfully deleted group: " + groupName);
 		} else {
 			System.out.println("Failed to delete group: " + groupName);
@@ -216,13 +214,12 @@ public class ClientCLI
 		final String username = scan.nextLine();
 		System.out.print("Enter the group name to delete " + username + " from: ");
 		final String groupName = scan.nextLine();
-		List<String> groupsDeleted = groupClient.deleteUserFromGroup(username, groupName, token);
+		UserToken groupsDeleted = groupClient.deleteUserFromGroup(username, groupName, token);
 		if (groupsDeleted != null) {
 			System.out.println("Successfully deleted " + username + " from group " + groupName);
-			if (!groupsDeleted.isEmpty()) {
+			if (!groupsDeleted.getGroups().isEmpty()) {
 				System.out.println(username + " was the owner of " + groupName + "; The group is now deleted...");
-				Token newTok = new Token(null, null, groupsDeleted);
-				fileClient.condFileDelete(groupsDeleted, newTok);
+				fileClient.condFileDelete(groupsDeleted);
 			}
 		} else {
 			System.out.println("Failed to delete " + username + " from group " + groupName);
