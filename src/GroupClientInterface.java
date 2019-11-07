@@ -65,7 +65,7 @@ public interface GroupClientInterface
      * @return List of groups that may have been deleted on success, null otherwise
      *
      */
-    public List<String> deleteUser(final String username, final UserToken token);
+    public UserToken deleteUser(final String username, final UserToken token);
 
 
     /**
@@ -91,7 +91,7 @@ public interface GroupClientInterface
      * @return List<String> of groups deleted (should be size of 1), null otherwise
      *
      */
-    public List<String> deleteGroup(final String groupname, final UserToken token);
+    public UserToken deleteGroup(final String groupname, final UserToken token);
 
 
     /**
@@ -119,7 +119,7 @@ public interface GroupClientInterface
      * @return List<String> of groups deleted (should be size of 1), null otherwise
      *
      */
-    public List<String> deleteUserFromGroup(final String user, final String group, final UserToken token);
+    public UserToken deleteUserFromGroup(final String user, final String group, final UserToken token);
 
 
 
