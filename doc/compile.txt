@@ -1,4 +1,7 @@
+The BouncyCastle jar (bcprov-jdk15on-164.jar)
+needs to be downloaded from https://bouncycastle.org/latest_releases.html
+and placed inside the src/ folder
+
 Once inside src/ folder,
 
-COMPILE: javac *.java
-
+COMPILE: make all

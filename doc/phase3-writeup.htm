@@ -135,7 +135,7 @@ The group server will generate a 4096-bit RSA key pair the first time
 it is started. Anytime the group server sends an encrypted token to a
 client, the group server will also send a digital signature of the hash
 of the token's toString output. 
-The token's toString output will be hashed using SHA-256, we need to use a cryptographically
+The token's toString output will be hashed using SHA2-256, we need to use a cryptographically
 strong hashing algorithm so that it is infeasible to forge a token that has
 an identical hash to genuine token. The token's toString method will return a unique
 string representation of the token in the following format:
@@ -146,17 +146,17 @@ The UserToken interface will be extended so that it can verify that a token can 
 This will be done by verifying the signature using the group server's public key.</p>
 
 <p>For a file server to be able to verify a token, the file server must
-have a list of trusted group server public keys. The file server cannot
+have a copy of the trusted group server's public key. The file server cannot
 rely on the client to send the group server's public key along with the
 signature, because the client could generate their own signature and send
-their own public key. Therefore, the file server admin will have to create
-a file of trusted group server public keys by contacting group server admins.
+their own public key. Therefore, the file server admin will have to get the
+trusted group server's public key by contacting group server admins.
 Our file system is intended for situations where file and group servers admins 
 can easily communicate offline, thus making our public key exchange protocol acceptable.
 An example of such an environment is an office, where group and file server admins would most likely
 be in the same building and could easily exchange public keys.
-These trusted keys will then be used to verify the signature of the token.
-If no trusted keys match, then the file server should reject the token.</p>
+This trusted key will then be used to verify the signature of the token.
+If the trusted key does not verify the signature, then the file server should reject the token.</p>
 
 <ul>
 	<li><em>k</em><sub>gs</sub><sup>-1</sup>: Group server's private key</li>
@@ -165,7 +165,7 @@ If no trusted keys match, then the file server should reject the token.</p>
 </ul>
 <ol>
 	<li>C &rarr; FS: { token || { H(token.toString()) }<em>k</em><sub>gs</sub><sup>-1</sup> }<em>k</em><sub>AES</sub></li>
-	<li>FS attempts to verify { H(token.toString()) }<em>k</em><sub>gs</sub><sup>-1</sup> using list of trusted group server public keys</li>
+	<li>FS attempts to verify { H(token.toString()) }<em>k</em><sub>gs</sub><sup>-1</sup> using trusted group server's public key</li>
 	<li>If FS successfully verifies signature, then FS accepts the token</li>
 </ol>
 
@@ -319,6 +319,12 @@ RSA signatures to prove that the AES key came from the group server, not a man
 in the middle. After writing up this protocol, we realized that we were overthinking
 this portion of the project. We continued to discuss, making sure that we were
 not protecting against threats that don't exist in the current model.</p>
+
+<p>We had to rewrite our solution to T3 after meeting with professor Garrison.
+We were separating the key sharing and challenge protocols, so an attacker
+could intercept the messages and relay them to the file server and group
+server, but with their own symmetric key. We fixed T3 and revisited professor
+Garrison.</p>
 
 <!-- END CHANGES HERE -->
     </section>
