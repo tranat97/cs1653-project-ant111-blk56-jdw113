@@ -99,9 +99,7 @@ public class FileClient extends Client implements FileClientInterface
             BufferedReader savedKeys = new BufferedReader(new FileReader(keyFile));
             while (savedKeys.ready()) {
                 ip = savedKeys.readLine();
-                System.out.println(ip);
                 keyHash = savedKeys.readLine();
-                System.out.println(keyHash);
                 knownKeys.put(ip, keyHash);
             }
         } catch (Exception e) {

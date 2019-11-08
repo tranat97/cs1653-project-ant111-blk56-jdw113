@@ -255,9 +255,9 @@ public class FileThread extends Thread
 			response = new Envelope("R2");
 			response.addObject(r1);
 			response.addObject(r2);
-			output.writeObject(crypto.encrypt(response, AESKey));
+			send(response);
 			//Validate Challenge 2
-			e = crypto.decrypt((Envelope)input.readObject(), AESKey);
+			e = receive();
 			r1 = (byte[])e.getObjContents().get(0);
 			if(!e.getMessage().equals("R2_RESPONSE") || e.getObjContents().size()!=1 || !Arrays.equals(r1, r2)) {
 				throw new Exception("Challenge 2 Failure");
@@ -265,7 +265,7 @@ public class FileThread extends Thread
             System.out.println("Request received: " + e.getMessage());
 			//Return an OK message
 			e = new Envelope("OK");
-			output.writeObject(crypto.encrypt(e, AESKey));
+			send(e);
             System.out.println("Handshake Successful; Connected to Host on "+socket.getInetAddress()+"...");
 			return true;
 		} catch (Exception ex){
