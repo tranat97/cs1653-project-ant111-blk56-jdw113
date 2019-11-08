@@ -77,7 +77,6 @@ public class FileServer extends Server
 		//Read in saved RSA Key pair or or generate new pair
 		RSAKeys = crypto.getRSAKeys("FilePublic.rsa", "FilePrivate.rsa");
 		System.out.println("Your Public Key: "+crypto.bytesToHex(crypto.hash(RSAKeys.getPublic().getEncoded())));
-        System.out.println("Your Public Key: "+RSAKeys.getPublic().getEncoded());
 		//Autosave Daemon. Saves lists every 5 minutes
 		AutoSaveFS aSave = new AutoSaveFS();
 		aSave.setDaemon(true);
