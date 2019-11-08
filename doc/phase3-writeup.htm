@@ -27,8 +27,13 @@ Andrew Tran: ant111@pitt.edu, Blaise Kesler: blk56@pitt.edu, Jeremy Wertkin: jdw
       <h2>Overview</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p>In this section, broadly overview the types of cryptographic techniques that
-your group has decided to use to address threats T1â€“T4.</p>
+<p>We will be using passwords to authenticate users with the group
+server (T1). RSA signatures will allow us to ensure that a token has not been
+forged or modified (T2). Public key fingerprinting and zero-knowledge
+proofs gives the client the ability to authenticate a file server (T3).
+A combination of public key encryption using 4096-bit RSA and symmetric key
+encryption using 256-bit AES allows the client to securely communicate with
+the group and file server (T4).</p>
 
 <!-- END CHANGES HERE -->
     </section>
@@ -84,14 +89,14 @@ valid attack in our current threat model, as we are only considering passive adv
 <ol>
     <li>GS &rarr; C: <em>k</em><sub>gs</sub></li>
     <li>C &rarr; GS: <em>k</em><sub>c</sub></li>
-    <li>Group server generates a 256-bit AES key <em>k</em><sub>AES</sub></li>
+    <li>GS generates a 256-bit AES key <em>k</em><sub>AES</sub></li>
 	<li>GS &rarr; C: { <em>k</em><sub>AES</sub> }<em>k</em><sub>c</sub></li>
-    <li>Client decrypts <em>k</em><sub>AES</sub> with <em>k</em><sub>c</sub><sup>-1</sup></li>
+    <li>C decrypts <em>k</em><sub>AES</sub> with <em>k</em><sub>c</sub><sup>-1</sup></li>
     <li>C &rarr; GS: { username || password }<em>k</em><sub>AES</sub>
-	<li>Group server decrypts username and password with <em>k</em><sub>AES</sub></li>
-    <li>Group server checks password against user's recorded password</li>
-    <li>GS &rarr; C: { token }<em>k</em><sub>AES</sub>, { H(token) }<em>k</em><sub>gs</sub><sup>-1</sup></li>
-    <li>Client decrypts token with <em>k</em><sub>AES</sub></li>
+	<li>GS decrypts username and password with <em>k</em><sub>AES</sub></li>
+    <li>GS checks password against user's recorded password</li>
+	<li>GS &rarr; C: { token || { H(token.toString()) }<em>k</em><sub>gs</sub><sup>-1</sup> }<em>k</em><sub>AES</sub></li>
+    <li>C decrypts token with <em>k</em><sub>AES</sub></li>
 </ol>
 
 <p>Assuming users are not willingly sharing passwords and we are only protecting
@@ -117,26 +122,63 @@ recording the victims encrypted password and performing an offline attack on the
       <h2>Threat T2: Token Modification/Forgery</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p>Begin this section by describing threat T2. This may include describing
-examples of the threat being exploited by an adversary, a short discussion of
-why this threat is problematic and needs to be addressed, and/or diagrams
-showing how the threat might manifest in your groupâ€™s insecure
-implementation.</p>
+<p>Token modification or forgery would invalidate the work we will do
+to prevent unauthorized token issuance. Currently, there is no way to
+prove that a token originated from a group server and has not been
+modified. An attacker could either forge a token or modify a
+legitimate token to give themselves access to other group's files
+and higher privileges in the group server. This is problematic if we
+assume that the clients are not trustworthy.</p>
 
-<p>Next, provide a short description of the mechanism that you chose to
-implement to protect against this threat. For interactive protocols, it would be
-helpful to provide a diagram explaining the messages exchanged between
-participating principals (use html &lt;img&gt; tag to import such images). Be
-sure to explain any cryptographic choices that your group makes: What types of
-algorithms, modes of operation, and/or key lengths did you choose? Why? If
-shared keys are needed, how are they exchanged?</p>
+<p>Our solution to this problem will be based on digital signatures.
+The group server will generate a 4096-bit RSA key pair the first time
+it is started. Anytime the group server sends an encrypted token to a
+client, the group server will also send a digital signature of the hash
+of the token's toString output. 
+The token's toString output will be hashed using SHA2-256, we need to use a cryptographically
+strong hashing algorithm so that it is infeasible to forge a token that has
+an identical hash to genuine token. The token's toString method will return a unique
+string representation of the token in the following format:
+issuer:subject:group<sub>1</sub>:[...]:group<sub>n</sub>. This toString method could be
+abused if we allowed the ':' character to be used in group server names, usernames, or group
+names, so it will have to be banned from being used for those identifiers.
+The UserToken interface will be extended so that it can verify that a token can be trusted.
+This will be done by verifying the signature using the group server's public key.</p>
 
-<p>Finally, provide a short argument addressing why your proposed mechanism
-sufficiently addresses this particular threat. This argument should address the
-correctness of your approach, as well as its overall security. For example, if
-your mechanism involves a key agreement or key exchange protocol, you should
-argue that both parties agree on the same key (correctnes) and that no other
-party can figure out the key (security).</p>
+<p>For a file server to be able to verify a token, the file server must
+have a copy of the trusted group server's public key. The file server cannot
+rely on the client to send the group server's public key along with the
+signature, because the client could generate their own signature and send
+their own public key. Therefore, the file server admin will have to get the
+trusted group server's public key by contacting group server admins.
+Our file system is intended for situations where file and group servers admins 
+can easily communicate offline, thus making our public key exchange protocol acceptable.
+An example of such an environment is an office, where group and file server admins would most likely
+be in the same building and could easily exchange public keys.
+This trusted key will then be used to verify the signature of the token.
+If the trusted key does not verify the signature, then the file server should reject the token.</p>
+
+<ul>
+	<li><em>k</em><sub>gs</sub><sup>-1</sup>: Group server's private key</li>
+    <li><em>k</em><sub>AES</sub>: Shared key between client and file server,
+      different from key shared between client and group server</li>
+</ul>
+<ol>
+	<li>C &rarr; FS: { token || { H(token.toString()) }<em>k</em><sub>gs</sub><sup>-1</sup> }<em>k</em><sub>AES</sub></li>
+	<li>FS attempts to verify { H(token.toString()) }<em>k</em><sub>gs</sub><sup>-1</sup> using trusted group server's public key</li>
+	<li>If FS successfully verifies signature, then FS accepts the token</li>
+</ol>
+
+<p>This mechanism for preventing token modification and forgery allows file
+servers to verify that the token they received from a client was made by, and was
+not modified after leaving, a trusted group server. The only downside to this
+approach is that the server admins will need to communicate to get a group
+server's public key. However, the only other option is to have the client pass it
+on, and we cannot trust that the client will send the group server's public key.
+If the file server is able to verify a token's signature, it should completely
+trust the authenticity of that token. There is no way a client could have sent
+a modified token if the file server is able to verify the signature using a
+trusted group server's public key.</p>
 
 <!-- END CHANGES HERE -->
     </section>
@@ -228,26 +270,39 @@ for the session so there is no way a man-in-the-middle can impersonate the file 
       <h2>Threat T4: Information Leakage via Passive Monitoring</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p>Begin this section by describing threat T4. This may include describing
-examples of the threat being exploited by an adversary, a short discussion of
-why this threat is problematic and needs to be addressed, and/or diagrams
-showing how the threat might manifest in your groupâ€™s insecure
-implementation.</p>
+<p>In the current state of the project, none of the communication between the client and server applications 
+is encrypted. This means that all communication can be observed through passive monitoring. This 
+is problematic because the client's actions and information could be stolen by intercepting the 
+communication between the client and server. This would give the attacker access to file contents, 
+UserTokens, as well as a log of actions performed by the client. With this information, the entire 
+system would be compromised because an attacker could do any action they wish by simply listening to the 
+communications between client and servers.</p>
 
-<p>Next, provide a short description of the mechanism that you chose to
-implement to protect against this threat. For interactive protocols, it would be
-helpful to provide a diagram explaining the messages exchanged between
-participating principals (use html &lt;img&gt; tag to import such images). Be
-sure to explain any cryptographic choices that your group makes: What types of
-algorithms, modes of operation, and/or key lengths did you choose? Why? If
-shared keys are needed, how are they exchanged?</p>
+<p>Our solution to the problem is to encrypt all communication done between the client and servers.  
+We will use symmetric key cryptography to encrypt communication between the client and servers.  
+This will be done using a 256-bit AES key in CBC mode. These key lengths will provide a 
+level of security that is infeasible to break, thus ensuring secure communication. The protocol for
+exchanging the symmetric key between the client and file server was shown in T3. Below is a diagram showing
+how messages are exchanged between the client and file servers:</p>
 
-<p>Finally, provide a short argument addressing why your proposed mechanism
-sufficiently addresses this particular threat. This argument should address the
-correctness of your approach, as well as its overall security. For example, if
-your mechanism involves a key agreement or key exchange protocol, you should
-argue that both parties agree on the same key (correctnes) and that no other
-party can figure out the key (security).</p>
+<ul>
+    <li><em>k</em><sub>cf</sub>: Client and File Server's Shared AES Key</li>
+    <li>M1,M2: Messages</li>
+</ul>
+<ol>
+    <li>C &rarr; FS:{ M1 }<em>k</em><sub>cf</sub></li>
+    <li>FS decrypts M1 with <em>k</em><sub>cf</sub></li>
+	<li>FS &rarr; C: { M2 }<em>k</em><sub>cf</sub></li>
+    <li>C decrypts M2 with <em>k</em><sub>cf</sub></li>
+</ol>
+
+<p>This mechanism for preventing information leakage via passive monitoring ensures that all 
+communication is secure. Both the client and file server encrypt all their communication with their shared AES key.  
+They establish this key when the client verifies the file server in T3.  
+These keys are thrown away on disconnect and new keys are generated at
+the start of the next session.
+The key size is large enough that it is infeasible to decrypt any communication 
+stolen through passive monitoring. </p>
 
 <!-- END CHANGES HERE -->
     </section>
@@ -255,15 +310,32 @@ party can figure out the key (security).</p>
       <h2>Discussion</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p>Conclude with a paragraph or two discussing the interplay between your
-proposed mechanisms, and commenting on the design process that your group
-followed. Did you discuss other ideas that didnâ€™t pan out before settling on the
-above-documented approach? Did you end up designing a really interesting
-protocol suite that addresses multiple threats at once? Use this space to show
-off your hard work!</p>
+<p>Our protocol to prevent token modification is a good example of the
+interplay between our mechanisms. First, the client would have to authenticate
+with the group server in order to obtain a token. This involves the entire
+protocol in T1. Then, the client would have to authenticate the
+file server using the process outlined in T3. Next, the client and 
+file server would need to agree on a symmetric key, which is shown in T4.
+Finally, the client can decrypt the token using the symmetric key from the
+group server, encrypt it using the symmetric key from the file server, and
+send the encrypted token and the signature to the file server.</p>
 
-<p>If your group did any extra credit, please discuss that in this section, as
-well.</p>
+<p>Before beginning this writeup, our group met up and discussed solutions to
+all the threats. Once we thought we had a solution, we tried to identify assumptions we were making
+and attacks that could break the protocol. The issue with this is that we were not only
+considering passive adversaries. During these discussions, we created a much
+stronger protocol to prevent unauthorized token issuance than the protocol used in T1.
+It involved salting and hashing passwords to protect the password database and 
+RSA signatures to prove that the AES key came from the group server, not a man
+in the middle. After writing up this protocol, we realized that we were overthinking
+this portion of the project. We continued to discuss, making sure that we were
+not protecting against threats that don't exist in the current model.</p>
+
+<p>We had to rewrite our solution to T3 after meeting with professor Garrison.
+We were separating the key sharing and challenge protocols, so an attacker
+could intercept the messages and relay them to the file server and group
+server, but with their own symmetric key. We fixed T3 and revisited professor
+Garrison.</p>
 
 <!-- END CHANGES HERE -->
     </section>
