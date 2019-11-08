@@ -3,7 +3,6 @@ import java.util.List;
 
 public class ClientCLI
 {
-
 	final static Scanner scan = new Scanner(System.in);
 	final static GroupClient groupClient = new GroupClient();
 	final static FileClient fileClient = new FileClient();
@@ -13,26 +12,25 @@ public class ClientCLI
 
 	public static void main(String[] args)
 	{
-		boolean connected = true;
-		do {
-			//connect("GroupServer", groupClient);
-			groupClient.connect("localhost", 8765);
-			if (!groupClient.handshake()) {
-				groupClient.disconnect();
-				connected = false;
-			}
-
-		} while (!connected);
+		connect("GroupServer", groupClient);
+		//groupClient.connect("localhost", 8765);
+		if (!groupClient.handshake()) {
+			groupClient.disconnect();
+			System.out.println("Handshake failed");
+			System.exit(1);
+		}
 		System.out.println("Handshake Successful; Connected to Group Server...");
-		do {
-			//connect("FileServer", fileClient);
-			fileClient.connect("localhost", 4321);
-			if(!fileClient.handshake()){
-				fileClient.disconnect();
-				connected = false;
-			}
-		} while(!connected);
+		System.out.println();
+
+		connect("FileServer", fileClient);
+		//fileClient.connect("localhost", 4321);
+		if(!fileClient.handshake()){
+			fileClient.disconnect();
+			System.out.println("Handshake failed");
+			System.exit(1);
+		}
 		System.out.println("Handshake Successful; Connected to File Server...");
+		System.out.println();
 		login();
 
 		String command;
