@@ -18,9 +18,7 @@ header {
       <h1>CS 1653 Project P4 Writeup</h1>
       <h2>
 <!-- BEGIN CHANGES HERE -->
-
-William Garrison
-
+Andrew Tran: ant111@pitt.edu, Blaise Kesler: blk56@pitt.edu, Jeremy Wertkin: jdw113@pitt.edu
 <!-- END CHANGES HERE -->
       </h2>
     </header>
@@ -64,7 +62,26 @@ party can figure out the key (security).</p>
       <h2>Threat T6: File Leakage</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p>Repeat the steps as for Threat T5.</p>
+<p>Begin this section by describing threat T6. This may include describing
+examples of the threat being exploited by an adversary, a short discussion of
+why this threat is problematic and needs to be addressed, and/or diagrams
+showing how the threat might manifest in your group’s implementation from Phase
+3.</p>
+
+<p>Next, provide a short description of the mechanism that you chose to
+implement to protect against this threat. For interactive protocols, it would be
+helpful to provide a diagram explaining the messages exchanged between
+participating principals (use html &lt;img&gt; tag to import such images). Be
+sure to explain any cryptographic choices that your group makes: What types of
+algorithms, modes of operation, and/or key lengths did you choose? Why? If
+shared keys are needed, how are they exchanged?</p>
+
+<p>Finally, provide a short argument addressing why your proposed mechanism
+sufficiently addresses this particular threat. This argument should address the
+correctness of your approach, as well as its overall security. For example, if
+your mechanism involves a key agreement or key exchange protocol, you should
+argue that both parties agree on the same key (correctnes) and that no other
+party can figure out the key (security).</p>
 
 <!-- END CHANGES HERE -->
     </section>
@@ -72,7 +89,29 @@ party can figure out the key (security).</p>
       <h2>Threat T7: Token Theft</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p>Repeat the steps as for Threat T5.</p>
+<p>If we are not trusting file server admins, letting them gain access to tokens
+which could be used to issue commands on any other server in the system is a massive
+problem. A file server admin could collect a user's token and then use that token to
+delete all the groups the user owns on the group server, or all the files the user has
+access to on a different file server.</p>
+
+<p>To prevent this, we will be adding a field to the token called target. The target
+field will contain the fingerprint of the server's public key (defined in T3). The token's toString
+method will be modified so that it includes this field in the unique identifier. The group server
+will sign the token's toString after the target field has been filled, so any other server will
+know if the field has been modified. Both the file server and the group server will verify the
+signature and check that the target field matches their own public key's fingerprint. This does mean that if the
+client wants to connect to a group server and a file server, they will need separate tokens.</p>
+
+<p>This solution provides correctness and security. If the file server trusts the group
+server's public key, then it should trust the token has not been modified if the token's
+signature can be verified with the trusted public key. If the file server believes that
+the token has not been modified, then the file server can trust that the token was created
+to be used on their server if the target field of the token matches the fingerprint of their own public key.
+With this solution in place, it would not be possible for a file server admin to collect
+user's tokens and use them on any other server in the system. The file server admin would
+need to obtain the group server's private key in order to change the target field and resign
+the token.</p>
 
 <!-- END CHANGES HERE -->
     </section>
