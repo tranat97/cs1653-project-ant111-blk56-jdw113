@@ -26,8 +26,23 @@ Andrew Tran: ant111@pitt.edu, Blaise Kesler: blk56@pitt.edu, Jeremy Wertkin: jdw
       <h2>Overview</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p>In this section, broadly overview the types of cryptographic techniques that
-your group has decided to use to address threats T5–T7.</p>
+<p>We will use our previously defined handshake for file servers to
+exchange keys with group servers. Instead of using a single key for
+confidentiality, each session will have a confidentiality and an
+integrity key. All messages sent after keys have been exchanged
+will include an HMAC of the message data and the message number,
+preventing message reorder, replay, or modification.</p>
+
+<p>To protect against file leakage, we will be encrypting files
+before they are sent to file servers. The group server will have
+to manage keys for each group. When a group member is removed from
+a group, the group server must generate a new key for that group.</p>
+
+<p>To protect against token theft, tokens will have a new field that
+contains the public key fingerprint of the server that the token is
+supposed to be used on (this information is sent to the group server
+by the client). The fingerprint will be included in the toString of
+the token, preventing a rougue file server from modifying the field.</p>
 
 <!-- END CHANGES HERE -->
     </section>
@@ -152,18 +167,29 @@ the token.</p>
       <h2>Discussion</h2>
 <!-- BEGIN CHANGES HERE -->
 
-<p>Conclude with a paragraph or two discussing the interplay between your
-proposed mechanisms, and commenting on the design process that your group
-followed. Did you discuss other ideas that didn’t pan out before settling on the
-above-documented approach? Did you end up designing a really interesting
-protocol suite that addresses multiple threats at once? Use this space to show
-off your hard work!</p>
+<p>There is not as much interplay with these proposed mechanisms as there
+were with our protocols designed for phase 3. The changes described in T5
+affect every message sent, which will have an effect on T6 and T7</p>
 
-<p>Finally, spend about one paragraph convincing me that your modified protocols
-still address the threats T1–T4 described in Phase 3 of the project.</p>
+<p>Before beginning to write this document, our group met to discuss
+possible solutions. We identified our solution for T7 almost immediately,
+but the others took more time. It wasn't until after the lectures on TLS
+that we were able to figure out a simple solution to T5. Our first
+solution to T6 was far too ineffeicent. When a group member was removed,
+we were planning on downloading all the files from the file server,
+decrypting them with the old key, encrypting them with the new key,
+and then uploading them back to the file server. Professor Garrison
+mentioned lazy revocation in discord, and we decided that was a much
+better solution.</p>
 
-<p>If your group did any extra credit, please discuss that in this section, as
-well.</p>
+<p>T1 is still protected against because clients still have to
+authenticate with a password in order to obtain a token. Tokens
+are being signed by the group server, so our solution for
+T2 is still in effect. Our handshake with file servers has not
+changed (except we are sending two keys instead of one), so
+our solution for T3 still applies.
+Every message sent is being encrypted, so there should not be any
+information leakage (T4).</p>
 
 <!-- END CHANGES HERE -->
     </section>
