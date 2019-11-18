@@ -36,7 +36,7 @@ your group has decided to use to address threats T5–T7.</p>
 <!-- BEGIN CHANGES HERE -->
 
 <p>Authenticating Group Servers:
-
+<br>
 In the current state of the project, the group server that the client connects to is not authenticated.  
 The only requirement for a user to connect to a server is the IP address and port number of the server. 
 This is not secure because without some way to authenticate the server, an attacker can intercept the traffic 
@@ -98,21 +98,24 @@ the user will know the kAES for the session so there is no way a man-in-the-midd
 
 
 <p>Preventing Message Reorder, Replay, or Modification:
-
+<br>
 In the current state of the project, messages between the client and servers are sent encrypted, 
 but order and modification cannot be detected.  Messages can be modified, replayed, and reordered 
 without consequence and this allows attackers with an easy way to harm and alter the system.  Through 
 launching a man-in-the-middle attack, an attacker could add deleted users back by replaying an add user 
 command or reorder messages, so a user is deleted before they request to download a file.</p>
 
-<p>This cannot happen in a secure file sharing system, so we will prevent these attacks by using ideas from TLS.  
-First, we will concatenate a sequence number with the message we wish to send.  Then we will take the HMAC of this 
-concatenation.  The HMAC will be done using SHA2-256, as we need to use a cryptographically strong hashing algorithm.
-The HMAC will also require a 64-byte integrity key.  This key will be generated at the same time as the AES key.  For
-group server-client communication, the group server will generate the integrity key.  For file server-client 
-communication, the client will generate the integrity key.  It will be easy to incorporate into the existing project 
-because a second key can easily be sent along with the AES key.  The message and HMAC will then be encrypted and sent 
-to its destination.</p>
+<p>This cannot happen in a secure file sharing system, so we will prevent these attacks by using ideas from TLS. 
+First, we will concatenate a sequence number with the message we wish to send.  This sequence number will have to 
+be kept consistent between sender and receiver so that integrity can be properly checked. This can simply be done 
+by having both client and server start at 1 and increment sequence number by one after each exchange.  The sequence 
+number will be reset to zero at the beginning of each client connection.  Then we will take the HMAC of this 
+concatenation of sequence number and message.  The HMAC will be done using SHA2-256, as we need to use a 
+cryptographically strong hashing algorithm.  The HMAC will also require a 64-byte integrity key.  This key will be 
+generated at the same time as the AES key.  For group server-client communication, the group server will generate the 
+integrity key.  For file server-client communication, the client will generate the integrity key.  It will be easy to 
+incorporate into the existing project because a second key can easily be sent along with the AES key.  The message and 
+HMAC will then be encrypted with the shared AES key and sent to its destination.</p>
 
 <p>(ADD CHART)</p>
 
