@@ -4,6 +4,7 @@ import java.net.Socket;
 import java.io.*;
 import java.util.*;
 import java.security.Key;
+import javax.crypto.spec.SecretKeySpec;
 
 public class GroupThread extends Thread
 {
@@ -342,33 +343,49 @@ public class GroupThread extends Thread
 		return true;
 	}
 
-	private boolean handshake()
+	private boolean handshake() 
 	{
-		Envelope response, message;
-		try {
-			// handshake
-			// sending our public key
+		Envelope response, e;
+		byte[] r1, r2, keyBytes;
+		try{
+			//HANDSHAKE: send public key
 			response = new Envelope("PUBKEY");
 			response.addObject(my_gs.RSAKeys.getPublic());
 			output.writeObject(response);
-			// recieving their public key
-			message = (Envelope) input.readObject();
-			if (!message.getMessage().equals("PUBKEY") || message.getObjContents().size() != 1) {
-				response = new Envelope("FAIL");
-				response.addObject(null);
-				output.writeObject(response);
-				return false;
+			//Challenge 1
+			e = (Envelope)input.readObject();
+			if(!e.getMessage().equals("R1") || e.getObjContents().size()!=2) {
+				throw new Exception("Challenge 1 Failure");
 			}
-			clientPublicKey = (Key) message.getObjContents().get(0);
-			// generating and sending AES key
-			AESKey = crypto.generateAESKey();
-			response = new Envelope("AESKEY");
-			response.addObject(crypto.rsaEncrypt(AESKey.getEncoded(), clientPublicKey));
-			output.writeObject(response);
+			System.out.println("Request received: " + e.getMessage());
+			//Decrypt message
+			r1 = crypto.rsaDecrypt((byte[])e.getObjContents().get(0), my_gs.RSAKeys.getPrivate());
+			keyBytes = crypto.rsaDecrypt((byte[])e.getObjContents().get(1), my_gs.RSAKeys.getPrivate());
+			AESKey = new SecretKeySpec(keyBytes, "AES");
+			//System.out.println("R1 = "+ (new String(crypto.rsaDecrypt(r1, my_gs.RSAKeys.getPrivate()))));
+			//Generate new nonce
+			r2 = crypto.generateRandomBytes(32);
+			//System.out.println("R2 = "+(new String(r2)));
+			//Challenge 1 Response
+			response = new Envelope("R2");
+			response.addObject(r1);
+			response.addObject(r2);
+			send(response);
+			//Validate Challenge 2
+			e = receive();
+			r1 = (byte[])e.getObjContents().get(0);
+			if(!e.getMessage().equals("R2_RESPONSE") || e.getObjContents().size()!=1 || !Arrays.equals(r1, r2)) {
+				throw new Exception("Challenge 2 Failure");
+			}
+            System.out.println("Request received: " + e.getMessage());
+			//Return an OK message
+			e = new Envelope("OK");
+			send(e);
+            System.out.println("Handshake Successful; Connected to Host on "+socket.getInetAddress()+"...");
 			return true;
-		} catch (Exception e) {
-			System.err.println("Error: " + e.getMessage());
-			e.printStackTrace(System.err);
+		} catch (Exception ex){
+			System.err.println("Error: " + ex.getMessage());
+			ex.printStackTrace(System.err);
 			return false;
 		}
 	}

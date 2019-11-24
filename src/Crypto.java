@@ -286,6 +286,11 @@ public class Crypto
 		return DatatypeConverter.printHexBinary(bytes);
 	}
 
+	public String fingerprint(Key k)
+	{
+		return bytesToHex(hash(k.getEncoded()));
+	}
+
 	private Object bytesToObject(byte[] bytes)
 	{
 		try {
