@@ -6,6 +6,8 @@ import java.io.ObjectInputStream;
 import java.security.PublicKey;
 import java.security.KeyPair;
 import javax.crypto.spec.SecretKeySpec;
+import java.io.*;
+import java.util.*;
 
 public class GroupClient extends Client implements GroupClientInterface {
 
@@ -14,38 +16,15 @@ public class GroupClient extends Client implements GroupClientInterface {
 	public GroupClient()
 	{
 		crypto = new Crypto();
+        knownKeys = new Hashtable<String, String>();
+        keyFile = new File("GroupServerKnownKeys.txt");
+        getServerKeys();
+		messageNumber = 0;
 	}
 
 	public boolean handshake()
 	{
-		if (!getRSAKeys("ClientPublic.rsa", "ClientPrivate.rsa")) {
-			return false;
-		}
-		try {
-			Envelope message = null, response = null;
-			// Receiving server's public key
-			response = (Envelope) input.readObject();
-			if (!response.getMessage().equals("PUBKEY") || response.getObjContents().size() != 1) {
-				return false;
-			}
-			serverPublicKey = (PublicKey) response.getObjContents().get(0);
-			// Sending client's public key
-			message = new Envelope("PUBKEY");
-			message.addObject(RSAKeys.getPublic());
-			output.writeObject(message);
-			// Receiving AES key
-			response = (Envelope) input.readObject();
-			if (!response.getMessage().equals("AESKEY") || response.getObjContents().size() != 1) {
-				return false;
-			}
-			byte[] result = crypto.rsaDecrypt((byte [])response.getObjContents().get(0), RSAKeys.getPrivate());
-			AESKey = new SecretKeySpec(result, "AES");
-		} catch (Exception e) {
-			System.err.println("Error: " + e.getMessage());
-			e.printStackTrace(System.err);
-			return false;
-		}
-		return true;
+		return handshake("Group Server");
 	}
 
 	private boolean getRSAKeys(String publicPath, String privatePath)

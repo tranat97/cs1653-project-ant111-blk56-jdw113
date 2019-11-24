@@ -78,6 +78,7 @@ public class GroupServer extends Server
 
 		// reading in saved RSA keys, or generating if missing
 		RSAKeys = crypto.getRSAKeys("GroupPublic.rsa", "GroupPrivate.rsa");
+		System.out.println("Your public key: " + crypto.fingerprint(RSAKeys.getPublic()));
 		//Autosave Daemon. Saves lists every 5 minutes
 		AutoSave aSave = new AutoSave(this);
 		aSave.setDaemon(true);
