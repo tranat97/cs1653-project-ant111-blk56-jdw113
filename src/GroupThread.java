@@ -12,14 +12,17 @@ public class GroupThread extends Thread
 	private GroupServer my_gs;
 	private Key clientPublicKey;
 	private Key AESKey;
+	private Key HMACKey;
 	private Crypto crypto;
 	private ObjectInputStream input;
 	private ObjectOutputStream output;
+	private int messageNumber;
 
 	public GroupThread(Socket _socket, GroupServer _gs)
 	{
 		socket = _socket;
 		my_gs = _gs;
+		messageNumber = 0;
 	}
 
     public void run()
@@ -354,7 +357,7 @@ public class GroupThread extends Thread
 			output.writeObject(response);
 			//Challenge 1
 			e = (Envelope)input.readObject();
-			if(!e.getMessage().equals("R1") || e.getObjContents().size()!=2) {
+			if(!e.getMessage().equals("R1") || e.getObjContents().size()!=3) {
 				throw new Exception("Challenge 1 Failure");
 			}
 			System.out.println("Request received: " + e.getMessage());
@@ -362,6 +365,8 @@ public class GroupThread extends Thread
 			r1 = crypto.rsaDecrypt((byte[])e.getObjContents().get(0), my_gs.RSAKeys.getPrivate());
 			keyBytes = crypto.rsaDecrypt((byte[])e.getObjContents().get(1), my_gs.RSAKeys.getPrivate());
 			AESKey = new SecretKeySpec(keyBytes, "AES");
+			keyBytes = crypto.rsaDecrypt((byte[])e.getObjContents().get(2), my_gs.RSAKeys.getPrivate());
+			HMACKey = new SecretKeySpec(keyBytes, "AES");
 			//System.out.println("R1 = "+ (new String(crypto.rsaDecrypt(r1, my_gs.RSAKeys.getPrivate()))));
 			//Generate new nonce
 			r2 = crypto.generateRandomBytes(32);
@@ -392,12 +397,12 @@ public class GroupThread extends Thread
 
 	private Envelope receive() throws Exception
 	{
-		return crypto.decrypt((Envelope) input.readObject(), AESKey);
+		return crypto.decrypt((Envelope) input.readObject(), messageNumber++, AESKey, HMACKey);
 	}
 
 	private void send(Envelope e) throws Exception
 	{
-		output.writeObject(crypto.encrypt(e, AESKey));
+		output.writeObject(crypto.encrypt(e, messageNumber++, AESKey, HMACKey));
 	}
 
 	private boolean checkToken(Envelope e)

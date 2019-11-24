@@ -18,9 +18,11 @@ public abstract class Client {
 	protected ObjectInputStream input;
 	protected PublicKey serverPublicKey;
 	protected Key AESKey;
+	protected Key HMACKey;
 	protected Crypto crypto;
     protected Hashtable<String, String> knownKeys;
     protected File keyFile;
+	protected int messageNumber;
 
 	protected boolean handshake(String server)
 	{
@@ -58,14 +60,16 @@ public abstract class Client {
 			//CHALLENGE START-----------------
 			//generate values
 			AESKey = crypto.generateAESKey();
+			HMACKey = crypto.generateAESKey();
 			r1 = crypto.generateRandomBytes(32);
 			//encrypt envelope using rsa
 			message = new Envelope("R1");
 			message.addObject(crypto.rsaEncrypt(r1, serverPublicKey));
 			message.addObject(crypto.rsaEncrypt(AESKey.getEncoded(), serverPublicKey));
+			message.addObject(crypto.rsaEncrypt(HMACKey.getEncoded(), serverPublicKey));
 			output.writeObject(message);
 			//Recieve R2 validate R1
-			response = crypto.decrypt((Envelope) input.readObject(), AESKey);
+			response = receive();
 			r2 = (byte[])response.getObjContents().get(0);
 			if (!response.getMessage().equals("R2") || response.getObjContents().size()!=2 || !Arrays.equals(r1, r2)) {
 				throw new Exception("Challenge 1 failure");
@@ -74,9 +78,9 @@ public abstract class Client {
 			r2 = (byte[])response.getObjContents().get(1);
 			message = new Envelope("R2_RESPONSE");
 			message.addObject(r2);
-			output.writeObject(crypto.encrypt(message, AESKey));
+			send(message);
 			//Recieve OK message
-			response = crypto.decrypt((Envelope)input.readObject(), AESKey);
+			response = receive();
 			if (!response.getMessage().equals("OK") || response.getObjContents().size()!=0) {
 				throw new Exception("Challenge 2 failure");
 			}
@@ -168,12 +172,12 @@ public abstract class Client {
 
 	protected Envelope receive() throws Exception
 	{
-		return crypto.decrypt((Envelope) input.readObject(), AESKey);
+		return crypto.decrypt((Envelope) input.readObject(), messageNumber++, AESKey, HMACKey);
 	}
 
 	protected void send(Envelope e) throws Exception
 	{
-		output.writeObject(crypto.encrypt(e, AESKey));
+		output.writeObject(crypto.encrypt(e, messageNumber++, AESKey, HMACKey));
 	}
 
     

@@ -11,11 +11,13 @@ import java.security.SecureRandom;
 import java.security.GeneralSecurityException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.Cipher;
+import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.xml.bind.DatatypeConverter;
 import java.io.*;
 import java.util.*;
+import java.math.BigInteger;
 
 public class Crypto
 {
@@ -25,7 +27,7 @@ public class Crypto
 	}
 
 	/* Returns an envelope with encrypted contents using our format */
-	public Envelope encrypt(Envelope e, Key AESKey)
+	public Envelope encrypt(Envelope e, int messageNumber, Key AESKey, Key HMACKey)
 	{
 		byte[] IV = generateRandomBytes(16);
 		Envelope result = new Envelope(bytesToHex(encrypt(e.getMessage().getBytes(), IV, AESKey)));
@@ -39,12 +41,23 @@ public class Crypto
 				result.addObject(encrypt(objectToBytes(contents), IV, AESKey));
 			}
 		}
+		// calculate and store HMAC in envelope
+		// HMAC is of the encrypted contents, and we
+		// will not be encrypting the HMAC
+		result.setHMAC(hmac(result, messageNumber, HMACKey));
 		return result;
 	}
 
-	/* Returns an envelope with decrypted contents using our format */
-	public Envelope decrypt(Envelope e, Key AESKey)
+	/* Returns an envelope with decrypted contents using our format
+	   If the HMAC is bad, then we return null */
+	public Envelope decrypt(Envelope e, int messageNumber, Key AESKey, Key HMACKey)
 	{
+		// calculate and verify HMAC
+		byte[] hmac = hmac(e, messageNumber, HMACKey);
+		if (!Arrays.equals(hmac, e.getHMAC())) {
+			return null;
+		}
+
 		byte[] IV = (byte[]) e.getObjContents().get(0);
 		Envelope result = new Envelope(new String(decrypt(hexToBytes(e.getMessage()), IV, AESKey)));
 		for (int i = 1; i < e.getObjContents().size(); i++) {
@@ -59,10 +72,30 @@ public class Crypto
 		return result;
 	}
 
+	public byte[] hmac(Envelope e, int messageNumber, Key HMACKey)
+	{
+		try {
+			Mac mac = Mac.getInstance("HmacSHA256", "BC");
+			mac.init(HMACKey);
+			// using BigInteger to convert int to byte[]
+			mac.update(BigInteger.valueOf(messageNumber).toByteArray());
+			mac.update(e.getMessage().getBytes());
+			for (int i = 0; i < e.getObjContents().size(); i++) {
+				mac.update((byte[]) e.getObjContents().get(i));
+			}
+			byte[] result = mac.doFinal();
+			return result;
+		} catch (GeneralSecurityException ex) {
+			System.err.println("Failed to calculate HMAC");
+			ex.printStackTrace();
+			return null;
+		}
+	}
+
 	public byte[] hash(byte[] plaintext)
 	{
 		try {
-			MessageDigest md = MessageDigest.getInstance("SHA-256");
+			MessageDigest md = MessageDigest.getInstance("SHA-256", "BC");
 			return md.digest(plaintext);
 		} catch (GeneralSecurityException e) {
 			System.err.println("Failed to hash");

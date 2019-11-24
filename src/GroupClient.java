@@ -19,6 +19,7 @@ public class GroupClient extends Client implements GroupClientInterface {
         knownKeys = new Hashtable<String, String>();
         keyFile = new File("GroupServerKnownKeys.txt");
         getServerKeys();
+		messageNumber = 0;
 	}
 
 	public boolean handshake()
