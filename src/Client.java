@@ -172,13 +172,16 @@ public abstract class Client {
 
 	protected Envelope receive() throws Exception
 	{
-		return crypto.decrypt((Envelope) input.readObject(), messageNumber++, AESKey, HMACKey);
+		Envelope e = crypto.decrypt((Envelope) input.readObject(), messageNumber++, AESKey, HMACKey);
+		if (e == null) {
+			System.err.println("Failed to verfiy HMAC");
+			System.exit(1);
+		}
+		return e;
 	}
 
 	protected void send(Envelope e) throws Exception
 	{
 		output.writeObject(crypto.encrypt(e, messageNumber++, AESKey, HMACKey));
 	}
-
-    
 }

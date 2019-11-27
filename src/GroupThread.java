@@ -397,7 +397,13 @@ public class GroupThread extends Thread
 
 	private Envelope receive() throws Exception
 	{
-		return crypto.decrypt((Envelope) input.readObject(), messageNumber++, AESKey, HMACKey);
+		Envelope e = crypto.decrypt((Envelope) input.readObject(), messageNumber++, AESKey, HMACKey);
+		if (e == null) {
+			sendFail();
+			socket.close();
+			throw new Exception("Failed to verify HMAC");
+		}
+		return e;
 	}
 
 	private void send(Envelope e) throws Exception

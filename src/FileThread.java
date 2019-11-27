@@ -9,6 +9,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.IOException;
 import java.security.Key;
 import java.util.Arrays;
 import javax.crypto.spec.SecretKeySpec;
@@ -181,7 +182,7 @@ public class FileThread extends Thread
 									System.out.printf("Upload failed: %s\n", e.getMessage());
 								}
 							}
-						} catch(Exception e1) {
+						} catch(IOException e1) {
 							System.err.println("Error: " + e.getMessage());
 							e1.printStackTrace(System.err);
 						}
@@ -197,24 +198,18 @@ public class FileThread extends Thread
 						System.out.printf("Error user %s doesn't have permission\n", t.getSubject());
 						e = new Envelope("ERROR_PERMISSION");
 					} else {
-						try {
-							File f = new File("shared_files/"+"_"+remotePath.replace('/', '_'));
+						File f = new File("shared_files/"+"_"+remotePath.replace('/', '_'));
 
-							if (!f.exists()) {
-								System.out.printf("Error file %s missing from disk\n", "_"+remotePath.replace('/', '_'));
-								e = new Envelope("ERROR_FILEMISSING");
-							} else if (f.delete()) {
-								System.out.printf("File %s deleted from disk\n", "_"+remotePath.replace('/', '_'));
-								FileServer.fileList.removeFile("/"+remotePath);
-								e = new Envelope("OK");
-							} else {
-								System.out.printf("Error deleting file %s from disk\n", "_"+remotePath.replace('/', '_'));
-								e = new Envelope("ERROR_DELETE");
-							}
-						} catch(Exception e1) {
-							System.err.println("Error: " + e1.getMessage());
-							e1.printStackTrace(System.err);
-							e = new Envelope(e1.getMessage());
+						if (!f.exists()) {
+							System.out.printf("Error file %s missing from disk\n", "_"+remotePath.replace('/', '_'));
+							e = new Envelope("ERROR_FILEMISSING");
+						} else if (f.delete()) {
+							System.out.printf("File %s deleted from disk\n", "_"+remotePath.replace('/', '_'));
+							FileServer.fileList.removeFile("/"+remotePath);
+							e = new Envelope("OK");
+						} else {
+							System.out.printf("Error deleting file %s from disk\n", "_"+remotePath.replace('/', '_'));
+							e = new Envelope("ERROR_DELETE");
 						}
 					}
 					send(e);
@@ -297,7 +292,13 @@ public class FileThread extends Thread
 
 	private Envelope receive() throws Exception
 	{
-		return crypto.decrypt((Envelope) input.readObject(), messageNumber++, AESKey, HMACKey);
+		Envelope e = crypto.decrypt((Envelope) input.readObject(), messageNumber++, AESKey, HMACKey);
+		if (e == null) {
+			send(new Envelope("FAIL"));
+			socket.close();
+			throw new Exception("Failed to verify HMAC");
+		}
+		return e;
 	}
 
 	private void send(Envelope e) throws Exception
