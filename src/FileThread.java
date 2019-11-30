@@ -73,7 +73,7 @@ public class FileThread extends Thread
 					response.addObject(accessible);
 					send(response);
 				} else if(e.getMessage().equals("UPLOADF")) {
-					if(e.getObjContents().size() < 3) {
+					if(e.getObjContents().size() < 4) {
 						response = new Envelope("FAIL-BADCONTENTS");
 					} else {
 						if(e.getObjContents().get(0) == null) {
@@ -84,10 +84,14 @@ public class FileThread extends Thread
 						}
 						if(e.getObjContents().get(2) == null) {
 							response = new Envelope("FAIL-BADTOKEN");
-						} else {
+						} 
+						if(e.getObjContents().get(3) == null) {
+							response = new Envelope("FAIL-BADKEY");
+						}else {
 							UserToken yourToken = (UserToken)e.getObjContents().get(0); //Extract token
 							String remotePath = (String)e.getObjContents().get(1);
 							String group = (String)e.getObjContents().get(2);
+							Integer key = (Integer)e.getObjContents().get(3);
 
 							if (FileServer.fileList.checkFile(remotePath)) {
 								System.out.printf("Error: file already exists at %s\n", remotePath);
@@ -114,7 +118,7 @@ public class FileThread extends Thread
 
 								if(e.getMessage().compareTo("EOF")==0) {
 									System.out.printf("Transfer successful file %s\n", remotePath);
-									FileServer.fileList.addFile(yourToken.getSubject(), group, remotePath);
+									FileServer.fileList.addFile(yourToken.getSubject(), group, remotePath, key);
 									response = new Envelope("OK"); //Success
 								} else {
 									System.out.printf("Error reading file %s from client\n", remotePath);
@@ -171,6 +175,7 @@ public class FileThread extends Thread
 								//If server indicates success, return the member list
 								if(e.getMessage().compareTo("DOWNLOADF")==0) {
 									e = new Envelope("EOF");
+									e.addObject(sf.getKey());
 									send(e);
 									e = receive();
 									if(e.getMessage().compareTo("OK")==0) {

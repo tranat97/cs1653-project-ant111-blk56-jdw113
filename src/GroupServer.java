@@ -14,6 +14,7 @@ public class GroupServer extends Server
 	public static final int SERVER_PORT = 8765;
 	public Crypto crypto;
 	public UserList userList;
+	public KeyList keyList;
 	public KeyPair RSAKeys;
 
 	public GroupServer()
@@ -75,7 +76,7 @@ public class GroupServer extends Server
 			System.out.println("Error reading from UserList file");
 			System.exit(-1);
 		}
-
+		
 		// reading in saved RSA keys, or generating if missing
 		RSAKeys = crypto.getRSAKeys("GroupPublic.rsa", "GroupPrivate.rsa");
 		System.out.println("Your public key: " + crypto.fingerprint(RSAKeys.getPublic()));

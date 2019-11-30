@@ -230,6 +230,32 @@ public class GroupThread extends Thread
 							sendFail();
 						}
 					}
+				} else if(message.getMessage().equals("KEYREQ")) {
+					if(message.getObjContents().size()<3) {
+						sendFail();
+					} else if(message.getObjContents().get(0) != null && message.getObjContents().get(1) != null && message.getObjContents().get(2) != null) {
+						UserToken yourToken = (UserToken) message.getObjContents().get(0); //Extract the token
+						String username = yourToken.getSubject(); //extract username of requester from the token
+						String groupname = (String) message.getObjContents().get(1); //Extract the groupname from message
+						Integer keyNum = (Integer) message.getObjContents().get(2); //Extract the key number from the message
+						//check if the requester has ownership of the group they are attempting to remove a user from and if the user to be removed exists and if the user is in the group
+						if (my_gs.userList.checkUser(username) && my_gs.userList.getUserGroups(username).contains(groupname)) {
+							Key reqKey = my_gs.userList.getKey(groupname, keyNum);
+							if (reqKey != null) {
+								if (keyNum<0) { //If they asked for the newest key set keyNum from -1 to the correct value
+									keyNum = my_gs.userList.getNewest(groupname);
+								}
+								response = new Envelope("OK");
+								response.addObject(reqKey);
+								response.addObject(keyNum); //send the number associated with the key being sent
+								send(response);
+							} else {
+								sendFail();
+							}
+						} else {
+							sendFail();
+						}
+					}
 				} else if (message.getMessage().equals("DISCONNECT")) { //Client wants to disconnect
 					socket.close(); //Close the socket
 					proceed = false; //End this communication loop
@@ -417,7 +443,8 @@ public class GroupThread extends Thread
 		if (message.equals("CUSER")     || message.equals("DUSER")        ||
 			message.equals("CGROUP")    || message.equals("DGROUP")       ||
 			message.equals("LMEMBERS")  || message.equals("AUSERTOGROUP") ||
-			message.equals("CPASSWORD") || message.equals("RUSERFROMGROUP")) {
+			message.equals("CPASSWORD") || message.equals("RUSERFROMGROUP") ||
+			message.equals("KEYREQ")) {
 			// token is the first object in all of these messages
 			if (e.getObjContents().size() == 0) {
 				return false;
