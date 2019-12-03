@@ -14,7 +14,6 @@ public class GroupServer extends Server
 	public static final int SERVER_PORT = 8765;
 	public Crypto crypto;
 	public UserList userList;
-	public KeyList keyList;
 	public KeyPair RSAKeys;
 
 	public GroupServer()

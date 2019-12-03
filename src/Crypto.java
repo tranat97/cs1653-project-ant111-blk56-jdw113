@@ -19,7 +19,7 @@ import java.io.*;
 import java.util.*;
 import java.math.BigInteger;
 
-public class Crypto
+public class Crypto implements java.io.Serializable
 {
 	public Crypto()
 	{

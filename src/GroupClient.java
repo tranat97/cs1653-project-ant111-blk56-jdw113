@@ -5,6 +5,7 @@ import java.util.List;
 import java.io.ObjectInputStream;
 import java.security.PublicKey;
 import java.security.KeyPair;
+import java.security.Key;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
 import java.util.*;
@@ -258,6 +259,37 @@ public class GroupClient extends Client implements GroupClientInterface {
 			System.err.println("Error: " + e.getMessage());
 			e.printStackTrace(System.err);
 		}
-		return null;
+		return null; 
+	}
+	
+	public KeyInfo keyRequest(String groupname, Integer keyNum, UserToken token)
+	{
+		KeyInfo reqKey = null;
+		Envelope message = null, response = null;
+		//request Key from group server
+		try {
+			message = new Envelope("KEYREQ");
+			message.addObject(token);
+			message.addObject(groupname);
+			message.addObject(keyNum);
+			send(message);
+			//Read response
+			response = receive();
+			if(response.getMessage().compareTo("KEY")==0) {
+				if(response.getObjContents().get(0)!=null && response.getObjContents().get(1)!=null) {
+					reqKey = new KeyInfo((Key)response.getObjContents().get(0), (Integer)response.getObjContents().get(1));
+                    
+				} else {
+					System.out.println("Key not found");
+				}
+			} else {
+				System.out.println("Format Error");
+			}
+			
+		} catch(Exception el) {
+			System.out.println("Error sending/receiving request");
+			return null;
+		}
+		return reqKey;
 	}
 }

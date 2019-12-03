@@ -238,14 +238,14 @@ public class GroupThread extends Thread
 						String username = yourToken.getSubject(); //extract username of requester from the token
 						String groupname = (String) message.getObjContents().get(1); //Extract the groupname from message
 						Integer keyNum = (Integer) message.getObjContents().get(2); //Extract the key number from the message
-						//check if the requester has ownership of the group they are attempting to remove a user from and if the user to be removed exists and if the user is in the group
-						if (my_gs.userList.checkUser(username) && my_gs.userList.getUserGroups(username).contains(groupname)) {
+						//check if the requester has access to the group 
+						if (my_gs.userList.checkUser(username) && my_gs.userList.getUserGroups(username).contains(groupname)) {                            
 							Key reqKey = my_gs.userList.getKey(groupname, keyNum);
 							if (reqKey != null) {
 								if (keyNum<0) { //If they asked for the newest key set keyNum from -1 to the correct value
 									keyNum = my_gs.userList.getNewest(groupname);
 								}
-								response = new Envelope("OK");
+								response = new Envelope("KEY");
 								response.addObject(reqKey);
 								response.addObject(keyNum); //send the number associated with the key being sent
 								send(response);

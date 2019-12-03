@@ -93,24 +93,33 @@ public class UserList implements java.io.Serializable
 	
 	public synchronized Key getKey(String groupname, Integer n)
 	{
-		if (keyList.containsKey(groupname)) {
-			if (n<0) { //get most recent key
-				if (status.get(groupname)) {
-					ArrayList<Key> keys = keyList.get(groupname);
-					return keys.get(keys.size()-1);
-				} else {
-					Key newKey = crypto.generateAESKey();
-					keyList.get(groupname).add(newKey);
-					status.replace(groupname, true);
-					return newKey;
-				}
-			} else { 
-				ArrayList<Key> keys = keyList.get(groupname);
-				return keys.get(n);
-			}
-		}
+        try {
+            if (keyList.containsKey(groupname)) {
+                if (n<0) { //get most recent key
+                    if (status.get(groupname)) {
+                        ArrayList<Key> keys = keyList.get(groupname);
+                        return keys.get(keys.size()-1);
+                    } else {
+                        Key newKey = crypto.generateAESKey();
+                        keyList.get(groupname).add(newKey);
+                        status.replace(groupname, true);
+                        return newKey;
+                    }
+                } else { 
+                    ArrayList<Key> keys = keyList.get(groupname);
+                    return keys.get(n);
+                }
+            }
+        } catch(Exception e) {
+            return null;
+        }
 		return null;
 	}
+    
+    public synchronized Boolean getStatus(String groupname)
+    {
+        return status.get(groupname);
+    }
 
 	public synchronized Integer getNewest(String groupname) {
 		return keyList.get(groupname).size()-1;
