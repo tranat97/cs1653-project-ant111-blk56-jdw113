@@ -1,4 +1,5 @@
 import java.util.List;
+import java.security.PublicKey;
 
 /**
  * Interface describing the operations that must be supported by the
@@ -38,7 +39,7 @@ public interface GroupClientInterface
      *         If this user does not exist, a null value will be returned.
      *
      */
-    public UserToken getToken(final String username, final String password);
+    public UserToken getToken(final String username, final String password, final PublicKey pubKey);
 
 
     /**
@@ -65,7 +66,7 @@ public interface GroupClientInterface
      * @return List of groups that may have been deleted on success, null otherwise
      *
      */
-    public UserToken deleteUser(final String username, final UserToken token);
+    public UserToken deleteUser(final String username, final UserToken token, final PublicKey pubKey);
 
 
     /**
@@ -91,7 +92,7 @@ public interface GroupClientInterface
      * @return List<String> of groups deleted (should be size of 1), null otherwise
      *
      */
-    public UserToken deleteGroup(final String groupname, final UserToken token);
+    public UserToken deleteGroup(final String groupname, final UserToken token, final PublicKey pubKey);
 
 
     /**
@@ -119,7 +120,7 @@ public interface GroupClientInterface
      * @return List<String> of groups deleted (should be size of 1), null otherwise
      *
      */
-    public UserToken deleteUserFromGroup(final String user, final String group, final UserToken token);
+    public UserToken deleteUserFromGroup(final String user, final String group, final UserToken token, final PublicKey pubKey);
 
 
 

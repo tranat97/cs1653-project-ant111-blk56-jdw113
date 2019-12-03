@@ -4,6 +4,7 @@ import java.net.Socket;
 import java.io.*;
 import java.util.*;
 import java.security.Key;
+import java.security.PublicKey;
 import javax.crypto.spec.SecretKeySpec;
 
 public class GroupThread extends Thread
@@ -54,17 +55,18 @@ public class GroupThread extends Thread
 					System.out.println("Forged or modified token attempt");
 					sendFail();
 				} else if (message.getMessage().equals("GET")) { //Client wants a token
-					if (message.getObjContents().size() != 2) {
+					if (message.getObjContents().size() != 3) {
 						sendFail();
 					} else {
 						String username = (String) message.getObjContents().get(0);
 						String password = (String) message.getObjContents().get(1);
+						String publicFingerprint = (String) message.getObjContents().get(2);
 
-						if (username == null || password == null) {
+						if (username == null || password == null || publicFingerprint == null) {
 							sendFail();
 						} else {
 							if (my_gs.userList.checkPassword(username, password)) {
-								UserToken yourToken = createToken(username); //Create a token
+								UserToken yourToken = createToken(username, publicFingerprint); //Create a token
 								crypto.sign(my_gs.RSAKeys.getPrivate(), yourToken);
 
 								//Respond to the client. On error, the client will receive a null token
@@ -108,15 +110,16 @@ public class GroupThread extends Thread
 						}
 					}
 				} else if (message.getMessage().equals("DUSER")) { //Client wants to delete a user
-					if (message.getObjContents().size() < 2) {
+					if (message.getObjContents().size() < 3) {
 						sendFail();
 					} else if (message.getObjContents().get(0) != null && message.getObjContents().get(1) != null) {
 						UserToken yourToken = (UserToken) message.getObjContents().get(0); //Extract the token
 						String username = (String) message.getObjContents().get(1); //Extract the username
+						String fsFingerprint =  (String) message.getObjContents().get(2); //Extract the FS public key fingerprint
 						List<String> groupsDeleted = deleteUser(username, yourToken);
 						if (groupsDeleted != null) {
 							response = new Envelope("OK"); //Success
-							UserToken deleted = new Token(my_gs.name, ":DELETEDGROUPS:", groupsDeleted);
+							UserToken deleted = new Token(my_gs.name, ":DELETEDGROUPS:", groupsDeleted, fsFingerprint, System.currentTimeMillis());
 							crypto.sign(my_gs.RSAKeys.getPrivate(), deleted);
 							response.addObject(deleted);
 							send(response);
@@ -148,19 +151,20 @@ public class GroupThread extends Thread
 					}
 				} else if (message.getMessage().equals("DGROUP")) { //Client wants to delete a group
 					//check if envelope has correct amount of information
-					if (message.getObjContents().size() < 2) {
+					if (message.getObjContents().size() < 3) {
 						sendFail();
 					} else if (message.getObjContents().get(0) != null && message.getObjContents().get(1) != null) {
 						UserToken yourToken = (UserToken) message.getObjContents().get(0); //Extract the token
 						String username = yourToken.getSubject(); //extract username from the token
 						String groupname = (String) message.getObjContents().get(1); //Extract the groupname from message
+						String fsFingerprint = (String) message.getObjContents().get(2); //Extract the fs fingerprint from message
 						if (my_gs.userList.getUserOwnership(username).contains(groupname)) { //check if the user has ownership of the group they are attempting to delete
 							my_gs.userList.removeOwnership(username, groupname); //remove ownership from the creator
-							deleteGroup(groupname, (Token) yourToken);
+							deleteGroup(groupname);
 							response = new Envelope("OK"); //Success
 							ArrayList<String> groupsDeleted = new ArrayList<String>();
 							groupsDeleted.add(groupname);
-							UserToken deleted = new Token(my_gs.name, ":DELETEDGROUPS:", groupsDeleted);
+							UserToken deleted = new Token(my_gs.name, ":DELETEDGROUPS:", groupsDeleted, fsFingerprint, System.currentTimeMillis());
 							crypto.sign(my_gs.RSAKeys.getPrivate(), deleted);
 							response.addObject(deleted);
 							send(response);
@@ -203,13 +207,14 @@ public class GroupThread extends Thread
 						}
 					}
 				} else if (message.getMessage().equals("RUSERFROMGROUP")) { //Client wants to remove user from a group
-					if (message.getObjContents().size() < 3) {
+					if (message.getObjContents().size() < 4) {
 						sendFail();
 					} else if (message.getObjContents().get(0) != null && message.getObjContents().get(1) != null && message.getObjContents().get(2) != null) {
 						UserToken yourToken = (UserToken) message.getObjContents().get(0); //Extract the token
 						String owner = yourToken.getSubject(); //extract username of requester from the token
 						String username = (String) message.getObjContents().get(1); //extract username of the group member to be removed from message
 						String groupname = (String) message.getObjContents().get(2); //Extract the groupname from message
+						String fsFingerprint = (String) message.getObjContents().get(3); //Extract the fs fingerprint from message
 						//check if the requester has ownership of the group they are attempting to remove a user from and if the user to be removed exists and if the user is in the group
 						if (my_gs.userList.getUserOwnership(owner).contains(groupname) && my_gs.userList.checkUser(username) && my_gs.userList.getUserGroups(username).contains(groupname)) {
 							response = new Envelope("OK"); //Success
@@ -217,12 +222,12 @@ public class GroupThread extends Thread
 							if (owner.equals(username)) {
 								//if the owner is removing themselves, the group is deleted
 								my_gs.userList.removeOwnership(username, groupname); //remove member from group
-								deleteGroup(groupname, (Token) yourToken);
+								deleteGroup(groupname);
 								groupsDeleted.add(groupname);
 							} else {
 								my_gs.userList.removeGroup(username, groupname); //remove member from group
 							}
-							UserToken deleted = new Token(my_gs.name, ":DELETEDGROUPS:", groupsDeleted);
+							UserToken deleted = new Token(my_gs.name, ":DELETEDGROUPS:", groupsDeleted, fsFingerprint, System.currentTimeMillis());
 							crypto.sign(my_gs.RSAKeys.getPrivate(), deleted);
 							response.addObject(deleted);
 							send(response);
@@ -271,12 +276,12 @@ public class GroupThread extends Thread
 	}
 
 	//Method to create tokens
-	private UserToken createToken(String username)
+	private UserToken createToken(String username, String publicFingerprint)
 	{
 		//Check that user exists
 		if (my_gs.userList.checkUser(username)) {
 			//Issue a new token with server's name, user's name, and user's groups
-			UserToken yourToken = new Token(my_gs.name, username, my_gs.userList.getUserGroups(username));
+			UserToken yourToken = new Token(my_gs.name, username, my_gs.userList.getUserGroups(username), publicFingerprint, System.currentTimeMillis());
 			return yourToken;
 		} else {
 			return null;
@@ -345,7 +350,7 @@ public class GroupThread extends Thread
 					//Delete owned groups
 					for (int index = 0; index < deleteOwnedGroup.size(); index++) {
 						//Use the delete group method. Token must be created for this action
-						deleteGroup(deleteOwnedGroup.get(index), new Token(my_gs.name, username, deleteOwnedGroup));
+						deleteGroup(deleteOwnedGroup.get(index));
 					}
 
 					//Delete the user from the user list
@@ -363,7 +368,7 @@ public class GroupThread extends Thread
 		}
 	}
 
-	private boolean deleteGroup(String groupname, Token yourToken)
+	private boolean deleteGroup(String groupname)
 	{
 		ArrayList<String> groupMembers = my_gs.userList.getMembers(groupname);
 		for (String member : groupMembers) {
@@ -450,7 +455,7 @@ public class GroupThread extends Thread
 				return false;
 			}
 			UserToken t = (UserToken) e.getObjContents().get(0);
-			return t != null && crypto.verify(my_gs.RSAKeys.getPublic(), t);
+			return t != null && crypto.verify(my_gs.RSAKeys.getPublic(), t) && checkFingerprint(t) && checkTimestamp(t);
 		}
 		// no token in message, so token is valid
 		return true;
@@ -461,5 +466,27 @@ public class GroupThread extends Thread
 		Envelope response = new Envelope("FAIL");
 		response.addObject(null);
 		send(response);
+	}
+	private boolean checkFingerprint(UserToken myToken)
+	{
+		PublicKey gsPubKey = my_gs.RSAKeys.getPublic();
+		String gsFingerprint = crypto.fingerprint(gsPubKey);
+		if(gsFingerprint.equals(myToken.getTarget())) {
+			return true;
+		} else {
+			return false;
+		}
+
+	}
+	private boolean checkTimestamp(UserToken myToken)
+	{
+		long unixTime = System.currentTimeMillis();
+		long tokenTimestamp = myToken.getTimestamp();
+		if(unixTime - tokenTimestamp <= 3600000) {       //check to see if timestamp older than 1 hour
+			return true;
+		} else {
+			return false;
+		}
+
 	}
 }

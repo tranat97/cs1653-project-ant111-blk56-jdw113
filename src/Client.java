@@ -184,4 +184,8 @@ public abstract class Client {
 	{
 		output.writeObject(crypto.encrypt(e, messageNumber++, AESKey, HMACKey));
 	}
+	public PublicKey getServerPublicKey() 
+	{
+		return serverPublicKey;
+	}
 }

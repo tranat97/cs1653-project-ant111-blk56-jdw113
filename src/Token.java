@@ -8,12 +8,17 @@ public class Token implements UserToken, Serializable
 	private String subject;
 	private List<String> groups;
 	private byte[] signature;
+	private String target;
+	private long timestamp;
 
-	public Token(String issuer, String subject, List<String> groups)
+
+	public Token(String issuer, String subject, List<String> groups, String target, long timestamp)
 	{
 		this.issuer = issuer;
 		this.subject = subject;
 		this.groups = new ArrayList<String>(groups);
+		this.target = target;
+		this.timestamp = timestamp;
 	}
 
     /**
@@ -78,6 +83,16 @@ public class Token implements UserToken, Serializable
 		for (String s : groups) {
 			sb.append(s + ":");
 		}
+		sb.append(target + ":");
+		sb.append(timestamp + ":");
 		return sb.toString();
+	}
+	public String getTarget()
+	{
+		return this.target;
+	}
+	public long getTimestamp()
+	{
+		return this.timestamp;
 	}
 }

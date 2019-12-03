@@ -34,7 +34,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 		return RSAKeys != null;
 	}
 
-	public UserToken getToken(String username, String password)
+	public UserToken getToken(String username, String password, PublicKey pubKey)
 	{
 		try {
 			UserToken token = null;
@@ -44,6 +44,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 			message = new Envelope("GET");
 			message.addObject(username);
 			message.addObject(password);
+			message.addObject(crypto.fingerprint(pubKey)); //Send fingerprint of the public key
 			send(message);
 
 			//Get the response from the server
@@ -120,7 +121,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 	}
 
 	@SuppressWarnings("unchecked")
-	public UserToken deleteUser(String username, UserToken token)
+	public UserToken deleteUser(String username, UserToken token, PublicKey pubKeyFS)
 	{
 		try {
 			Envelope message = null, response = null;
@@ -129,6 +130,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 			message = new Envelope("DUSER");
 			message.addObject(token);  //Add requester's token
 			message.addObject(username); //Add user name
+			message.addObject(crypto.fingerprint(pubKeyFS)); //Add FS public key
 			send(message);
 
 			response = receive();
@@ -169,7 +171,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 	}
 
 	@SuppressWarnings("unchecked")
-	public UserToken deleteGroup(String groupname, UserToken token)
+	public UserToken deleteGroup(String groupname, UserToken token, PublicKey pubKeyFS)
 	{
 		try {
 			Envelope message = null, response = null;
@@ -177,6 +179,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 			message = new Envelope("DGROUP");
 			message.addObject(token); //Add requester's token
 			message.addObject(groupname); //Add group name string
+			message.addObject(crypto.fingerprint(pubKeyFS)); //Add FS public key fingerprint
 			send(message);
 
 			response = receive();
@@ -239,7 +242,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 	}
 
 	@SuppressWarnings("unchecked")
-	public UserToken deleteUserFromGroup(String username, String groupname, UserToken token)
+	public UserToken deleteUserFromGroup(String username, String groupname, UserToken token, PublicKey pubKeyFS)
 	{
 		try {
 			Envelope message = null, response = null;
@@ -248,6 +251,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 			message.addObject(token); //Add requester's token
 			message.addObject(username); //Add user name string
 			message.addObject(groupname); //Add group name string
+			message.addObject(crypto.fingerprint(pubKeyFS)); //Add fs fingerprint
 			send(message);
 
 			response = receive();

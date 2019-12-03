@@ -7,14 +7,15 @@ public class ClientCLI
 	final static Scanner scan = new Scanner(System.in);
 	final static GroupClient groupClient = new GroupClient();
 	final static FileClient fileClient = new FileClient();
-	static UserToken token;
+	static UserToken tokenGS;
+	static UserToken tokenFS;
 	static String username;
 	static String password;
 
 	public static void main(String[] args)
 	{
-		connect("GroupServer", groupClient);
-		//groupClient.connect("localhost", 8765);
+		//connect("GroupServer", groupClient);
+		groupClient.connect("localhost", 8765);
 		if (!groupClient.handshake()) {
 			groupClient.disconnect();
 			System.out.println("Handshake failed");
@@ -23,8 +24,8 @@ public class ClientCLI
 		System.out.println("Handshake Successful; Connected to Group Server...");
 		System.out.println();
 
-		connect("FileServer", fileClient);
-		//fileClient.connect("localhost", 4321);
+		//connect("FileServer", fileClient);
+		fileClient.connect("localhost", 4321);
 		if(!fileClient.handshake()){
 			fileClient.disconnect();
 			System.out.println("Handshake failed");
@@ -99,23 +100,27 @@ public class ClientCLI
 
 	public static void login()
 	{
-		UserToken recieved;
+		UserToken recievedGS;
+		UserToken recievedFS;
 		do {
 			System.out.print("Enter username: ");
 			username = scan.nextLine();
 			System.out.print("Enter password: ");
 			password = scan.nextLine();
-			recieved = groupClient.getToken(username, password);
-			if (recieved == null) {
+			recievedGS = groupClient.getToken(username, password, groupClient.getServerPublicKey());
+			recievedFS = groupClient.getToken(username, password, fileClient.getServerPublicKey());
+			if (recievedGS == null || recievedFS == null) {
 				System.out.println("Invalid credentials");
 			}
-		} while (recieved == null);
-		token = recieved;
+		} while (recievedGS == null || recievedFS == null);
+		tokenGS = recievedGS;
+		tokenFS = recievedFS;
 	}
 
 	public static void refreshToken()
 	{
-		token = groupClient.getToken(username, password);
+		tokenGS = groupClient.getToken(username, password, groupClient.getServerPublicKey());
+		tokenFS = groupClient.getToken(username, password, fileClient.getServerPublicKey());
 	}
 
 	public static void printHelp()
@@ -133,7 +138,7 @@ public class ClientCLI
 	{
 		System.out.print("Enter your new password: ");
 		final String newPassword = scan.nextLine();
-		if (groupClient.changePassword(newPassword, token)) {
+		if (groupClient.changePassword(newPassword, tokenGS)) {
 			password = newPassword;
 			System.out.println("Successfully changed password");
 		} else {
@@ -147,7 +152,7 @@ public class ClientCLI
 		final String username = scan.nextLine();
 		System.out.print("Enter new user's password: ");
 		final String password = scan.nextLine();
-		if (groupClient.createUser(username, password, token)) {
+		if (groupClient.createUser(username, password, tokenGS)) {
 			System.out.println("Successfully created user: " + username);
 		} else {
 			System.out.println("Failed to create user: " + username);
@@ -158,7 +163,7 @@ public class ClientCLI
 	{
 		System.out.print("Enter username to be deleted: ");
 		final String username = scan.nextLine();
-		UserToken groupsDeleted = groupClient.deleteUser(username, token);
+		UserToken groupsDeleted = groupClient.deleteUser(username, tokenGS, fileClient.getServerPublicKey());
 		if (groupsDeleted != null) {
 			System.out.println("Successfully deleted user: " + username);
 			if (!groupsDeleted.getGroups().isEmpty()) {
@@ -174,7 +179,7 @@ public class ClientCLI
 	{
 		System.out.print("Enter new group's name: ");
 		final String groupName = scan.nextLine();
-		if (groupClient.createGroup(groupName, token)) {
+		if (groupClient.createGroup(groupName, tokenGS)) {
 			System.out.println("Successfully created group: " + groupName);
 		} else {
 			System.out.println("Failed to create group: " + groupName);
@@ -185,7 +190,7 @@ public class ClientCLI
 	{
 		System.out.print("Enter the name of the group to be deleted: ");
 		final String groupName = scan.nextLine();
-		UserToken groupsDeleted = groupClient.deleteGroup(groupName, token);
+		UserToken groupsDeleted = groupClient.deleteGroup(groupName, tokenGS, fileClient.getServerPublicKey());
 		if (groupsDeleted != null) {
 			fileClient.condFileDelete(groupsDeleted);
 			System.out.println("Successfully deleted group: " + groupName);
@@ -200,7 +205,7 @@ public class ClientCLI
 		final String username = scan.nextLine();
 		System.out.print("Enter the group name to add " + username + " to: ");
 		final String groupName = scan.nextLine();
-		if (groupClient.addUserToGroup(username, groupName, token)) {
+		if (groupClient.addUserToGroup(username, groupName, tokenGS)) {
 			System.out.println("Successfully added " + username + " to group " + groupName);
 		} else {
 			System.out.println("Failed to add " + username + " to group " + groupName);
@@ -213,7 +218,7 @@ public class ClientCLI
 		final String username = scan.nextLine();
 		System.out.print("Enter the group name to delete " + username + " from: ");
 		final String groupName = scan.nextLine();
-		UserToken groupsDeleted = groupClient.deleteUserFromGroup(username, groupName, token);
+		UserToken groupsDeleted = groupClient.deleteUserFromGroup(username, groupName, tokenGS, fileClient.getServerPublicKey());
 		if (groupsDeleted != null) {
 			System.out.println("Successfully deleted " + username + " from group " + groupName);
 			if (!groupsDeleted.getGroups().isEmpty()) {
@@ -229,7 +234,7 @@ public class ClientCLI
 	{
 		System.out.print("Enter the group name to list members from: ");
 		final String groupName = scan.nextLine();
-		final List<String> members = groupClient.listMembers(groupName, token);
+		final List<String> members = groupClient.listMembers(groupName, tokenGS);
 		if (members != null) {
 			for (final String member : members) {
 				System.out.println("\t" + member);
@@ -241,7 +246,7 @@ public class ClientCLI
 
 	public static void listFiles()
 	{
-		final List<String> files = fileClient.listFiles(token);
+		final List<String> files = fileClient.listFiles(tokenFS);
 		if (files != null && files.size() > 0) {
 			for (final String file : files) {
 				System.out.println("\t" + file);
@@ -259,11 +264,11 @@ public class ClientCLI
 		final String destination = scan.nextLine();
 		System.out.print("Enter the group name which the file should be shared with: ");
 		final String groupName = scan.nextLine();
-		KeyInfo info = groupClient.keyRequest(groupName, new Integer(-1), token);
+		KeyInfo info = groupClient.keyRequest(groupName, new Integer(-1), tokenGS);
         if (info!=null) {
             Key key = info.getKey();
             Integer n = info.getKeyNum();
-            if (fileClient.upload(source, destination, groupName, token, key, n)) {
+            if (fileClient.upload(source, destination, groupName, tokenFS, key, n)) {
                 System.out.println("Successfully uploaded: " + source);
             } else {
                 System.out.println("Failed to upload: " + source);
@@ -280,14 +285,14 @@ public class ClientCLI
 		System.out.print("Enter the group name the file belongs to: ");
 		final String groupname = scan.nextLine();
 		//Retrieve required key
-		Integer keyNum = fileClient.keyRequest(source, token);
+		Integer keyNum = fileClient.keyRequest(source, tokenFS);
 		if (keyNum == null) {
 			return;
 		}
-		KeyInfo info = groupClient.keyRequest(groupname, keyNum, token);
+		KeyInfo info = groupClient.keyRequest(groupname, keyNum, tokenGS);
 		if (info != null) {
             Key key = info.getKey();
-			if (fileClient.download(source, destination, token, key)) {
+			if (fileClient.download(source, destination, tokenFS, key)) {
 				System.out.println("Successfully downloaded: " + source);
 			} else {
 				System.out.println("Failed to downloaded: " + source);
@@ -301,7 +306,7 @@ public class ClientCLI
 	{
 		System.out.print("Enter the name of the file to delete: ");
 		final String toDelete = scan.nextLine();
-		if (fileClient.delete(toDelete, token)) {
+		if (fileClient.delete(toDelete, tokenFS)) {
 			System.out.println("Successfully deleted: " + toDelete);
 		} else {
 			System.out.println("Failed to delete: " + toDelete);
