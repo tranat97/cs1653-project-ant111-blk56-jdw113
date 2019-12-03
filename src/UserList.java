@@ -1,9 +1,13 @@
 /* This list represents the users on the server */
+import java.security.Key;
 import java.util.*;
 public class UserList implements java.io.Serializable
 {
 	private static final long serialVersionUID = 7600343803563417992L;
 	private Hashtable<String, User> list = new Hashtable<String, User>();
+	private Hashtable<String, ArrayList<Key>> keyList = new Hashtable<String, ArrayList<Key>>();
+	private Hashtable<String, Boolean> status = new Hashtable<String, Boolean>(); //True=valid key; false=new key needs to be generated
+	private Crypto crypto = new Crypto();
 
 	public synchronized void addUser(String username, String password)
 	{
@@ -57,16 +61,23 @@ public class UserList implements java.io.Serializable
 	public synchronized void removeGroup(String user, String groupname)
 	{
 		list.get(user).removeGroup(groupname);
+		status.replace(groupname, false); //This group will need to generate a new key next time it is requested
 	}
-
+	
+	//Only called when a new group is being created
 	public synchronized void addOwnership(String user, String groupname)
 	{
 		list.get(user).addOwnership(groupname);
+		keyList.put(groupname, new ArrayList<Key>());
+		status.put(groupname, false);
 	}
 
+	//Only called when a group is being deleted
 	public synchronized void removeOwnership(String user, String groupname)
 	{
 		list.get(user).removeOwnership(groupname);
+		keyList.remove(groupname);
+		status.remove(groupname);
 	}
 
 	public synchronized ArrayList<String> getMembers(String groupname)
@@ -79,7 +90,41 @@ public class UserList implements java.io.Serializable
 		}
 		return members;
 	}
+	
+	public synchronized Key getKey(String groupname, Integer n)
+	{
+        try {
+            if (keyList.containsKey(groupname)) {
+                if (n<0) { //get most recent key
+                    if (status.get(groupname)) {
+                        ArrayList<Key> keys = keyList.get(groupname);
+                        return keys.get(keys.size()-1);
+                    } else {
+                        Key newKey = crypto.generateAESKey();
+                        keyList.get(groupname).add(newKey);
+                        status.replace(groupname, true);
+                        return newKey;
+                    }
+                } else { 
+                    ArrayList<Key> keys = keyList.get(groupname);
+                    return keys.get(n);
+                }
+            }
+        } catch(Exception e) {
+            return null;
+        }
+		return null;
+	}
+    
+    public synchronized Boolean getStatus(String groupname)
+    {
+        return status.get(groupname);
+    }
 
+	public synchronized Integer getNewest(String groupname) {
+		return keyList.get(groupname).size()-1;
+	}
+	
 	class User implements java.io.Serializable
 	{
 		private static final long serialVersionUID = -6699986336399821598L;

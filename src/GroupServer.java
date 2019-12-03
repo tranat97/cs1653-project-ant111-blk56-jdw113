@@ -75,7 +75,7 @@ public class GroupServer extends Server
 			System.out.println("Error reading from UserList file");
 			System.exit(-1);
 		}
-
+		
 		// reading in saved RSA keys, or generating if missing
 		RSAKeys = crypto.getRSAKeys("GroupPublic.rsa", "GroupPrivate.rsa");
 		System.out.println("Your public key: " + crypto.fingerprint(RSAKeys.getPublic()));

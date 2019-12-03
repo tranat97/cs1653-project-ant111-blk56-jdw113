@@ -11,9 +11,9 @@ public class FileList implements java.io.Serializable
 		list = new ArrayList<ShareFile>();
 	}
 
-	public synchronized void addFile(String owner, String group, String path)
+	public synchronized void addFile(String owner, String group, String path, Integer key, byte [] iv)
 	{
-		ShareFile newFile = new ShareFile(owner, group, path);
+		ShareFile newFile = new ShareFile(owner, group, path, key, iv);
 		list.add(newFile);
 	}
 

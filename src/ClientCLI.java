@@ -1,5 +1,6 @@
 import java.util.Scanner;
 import java.util.List;
+import java.security.Key;
 
 public class ClientCLI
 {
@@ -258,11 +259,16 @@ public class ClientCLI
 		final String destination = scan.nextLine();
 		System.out.print("Enter the group name which the file should be shared with: ");
 		final String groupName = scan.nextLine();
-		if (fileClient.upload(source, destination, groupName, token)) {
-			System.out.println("Successfully uploaded: " + source);
-		} else {
-			System.out.println("Failed to upload: " + source);
-		}
+		KeyInfo info = groupClient.keyRequest(groupName, new Integer(-1), token);
+        if (info!=null) {
+            Key key = info.getKey();
+            Integer n = info.getKeyNum();
+            if (fileClient.upload(source, destination, groupName, token, key, n)) {
+                System.out.println("Successfully uploaded: " + source);
+            } else {
+                System.out.println("Failed to upload: " + source);
+            }
+        }
 	}
 
 	public static void download()
@@ -271,11 +277,24 @@ public class ClientCLI
 		final String source = scan.nextLine();
 		System.out.print("Enter the destination file's name: ");
 		final String destination = scan.nextLine();
-		if (fileClient.download(source, destination, token)) {
-			System.out.println("Successfully downloaded: " + source);
-		} else {
-			System.out.println("Failed to downloaded: " + source);
+		System.out.print("Enter the group name the file belongs to: ");
+		final String groupname = scan.nextLine();
+		//Retrieve required key
+		Integer keyNum = fileClient.keyRequest(source, token);
+		if (keyNum == null) {
+			return;
 		}
+		KeyInfo info = groupClient.keyRequest(groupname, keyNum, token);
+		if (info != null) {
+            Key key = info.getKey();
+			if (fileClient.download(source, destination, token, key)) {
+				System.out.println("Successfully downloaded: " + source);
+			} else {
+				System.out.println("Failed to downloaded: " + source);
+			}
+		}
+		
+		//Decrypt the file
 	}
 
 	public static void delete()

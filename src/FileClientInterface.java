@@ -1,5 +1,5 @@
 import java.util.List;
-
+import java.security.Key;
 /**
  * Interface describing the operations that must be supported by the
  * client application used to talk with the file servers.  All methods
@@ -51,7 +51,7 @@ public interface FileClientInterface
 	 * @return true on success, false on failure
 	 *
 	 */
-	public boolean upload(final String sourceFile, final String destFile, final String group, final UserToken token);
+	public boolean upload(final String sourceFile, final String destFile, final String group, final UserToken token, final Key key, final Integer keyNum);
 
 	/**
 	 * Downloads a file from the server.  The user must be a member of
@@ -64,7 +64,7 @@ public interface FileClientInterface
 	 * @return true on success, false on failure
 	 *
 	 */
-	public boolean download(final String sourceFile, final String destFile, final UserToken token);
+	public boolean download(final String sourceFile, final String destFile, final UserToken token, Key key);
 
 	/**
 	 * Deletes a file from the server.  The user must be a member of

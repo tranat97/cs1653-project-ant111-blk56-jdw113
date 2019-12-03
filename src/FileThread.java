@@ -73,7 +73,7 @@ public class FileThread extends Thread
 					response.addObject(accessible);
 					send(response);
 				} else if(e.getMessage().equals("UPLOADF")) {
-					if(e.getObjContents().size() < 3) {
+					if(e.getObjContents().size() < 5) {
 						response = new Envelope("FAIL-BADCONTENTS");
 					} else {
 						if(e.getObjContents().get(0) == null) {
@@ -84,10 +84,19 @@ public class FileThread extends Thread
 						}
 						if(e.getObjContents().get(2) == null) {
 							response = new Envelope("FAIL-BADTOKEN");
+						} 
+						if(e.getObjContents().get(3) == null) {
+							response = new Envelope("FAIL-BADKEY");
+						}
+						if(e.getObjContents().get(4) == null) {
+							response = new Envelope("FAIL-IV");
 						} else {
 							UserToken yourToken = (UserToken)e.getObjContents().get(0); //Extract token
 							String remotePath = (String)e.getObjContents().get(1);
 							String group = (String)e.getObjContents().get(2);
+							Integer key = (Integer)e.getObjContents().get(3);
+							byte[] iv = (byte[])e.getObjContents().get(4);
+                            //System.out.println("upload IV = "+Arrays.toString(iv));
 
 							if (FileServer.fileList.checkFile(remotePath)) {
 								System.out.printf("Error: file already exists at %s\n", remotePath);
@@ -114,7 +123,7 @@ public class FileThread extends Thread
 
 								if(e.getMessage().compareTo("EOF")==0) {
 									System.out.printf("Transfer successful file %s\n", remotePath);
-									FileServer.fileList.addFile(yourToken.getSubject(), group, remotePath);
+									FileServer.fileList.addFile(yourToken.getSubject(), group, remotePath, key, iv);
 									response = new Envelope("OK"); //Success
 								} else {
 									System.out.printf("Error reading file %s from client\n", remotePath);
@@ -146,35 +155,45 @@ public class FileThread extends Thread
 								send(e);
 							} else {
 								FileInputStream fis = new FileInputStream(f);
+								//Send User the IV they need to decrypt
+								e = new Envelope("IV");
+                                //System.out.println("download IV = "+Arrays.toString(sf.getIV()));
+								e.addObject(sf.getIV());
+								send(e);
+								
+								e = receive();
+								if(e.getMessage().compareTo("READY")==0) {
+									do {
+										byte[] buf = new byte[4112];
+										if (e.getMessage().compareTo("READY")!=0) {
+											System.out.printf("Server error: %s\n", e.getMessage());
+											break;
+										}
+										e = new Envelope("CHUNK");
+										int n = fis.read(buf); //can throw an IOException
+										if (n > 0) {
+											System.out.printf(".");
+										} else if (n < 0) {
+											System.out.println("Read error");
+										}
+										e.addObject(buf);
+										e.addObject(new Integer(n));
+										send(e);
 
-								do {
-									byte[] buf = new byte[4096];
-									if (e.getMessage().compareTo("DOWNLOADF")!=0) {
-										System.out.printf("Server error: %s\n", e.getMessage());
-										break;
-									}
-									e = new Envelope("CHUNK");
-									int n = fis.read(buf); //can throw an IOException
-									if (n > 0) {
-										System.out.printf(".");
-									} else if (n < 0) {
-										System.out.println("Read error");
-									}
+										e = receive();
+									} while (fis.available()>0);
 
-									e.addObject(buf);
-									e.addObject(new Integer(n));
-									send(e);
-
-									e = receive();
-								} while (fis.available()>0);
-
-								//If server indicates success, return the member list
-								if(e.getMessage().compareTo("DOWNLOADF")==0) {
-									e = new Envelope("EOF");
-									send(e);
-									e = receive();
-									if(e.getMessage().compareTo("OK")==0) {
-										System.out.printf("File data upload successful\n");
+									//Send EOF
+									if(e.getMessage().compareTo("READY")==0) {
+										e = new Envelope("EOF");
+										//e.addObject(sf.getIV());
+										send(e);
+										e = receive();
+										if(e.getMessage().compareTo("OK")==0) {
+											System.out.printf("\nFile data upload successful\n");
+										} else {
+											System.out.printf("Upload failed: %s\n", e.getMessage());
+										}
 									} else {
 										System.out.printf("Upload failed: %s\n", e.getMessage());
 									}
@@ -213,8 +232,36 @@ public class FileThread extends Thread
 						}
 					}
 					send(e);
-				}
-				else if(e.getMessage().equals("DISCONNECT")) {
+				} else if (e.getMessage().equals("KEYREQ"))  {
+					UserToken t = (UserToken)e.getObjContents().get(0);
+					String remotePath = (String)e.getObjContents().get(1);
+					ShareFile sf = FileServer.fileList.getFile("/"+remotePath);
+					if (sf == null) {
+						System.out.printf("Error: File %s doesn't exist\n", remotePath);
+						e = new Envelope("ERROR_FILEMISSING");
+						send(e);
+					} else if (!t.getGroups().contains(sf.getGroup())){
+						System.out.printf("Error user %s doesn't have permission\n", t.getSubject());
+						e = new Envelope("ERROR_PERMISSION");
+						send(e);
+					} else {
+						try {
+							File f = new File("shared_files/_"+remotePath.replace('/', '_'));
+							if (!f.exists()) {
+								System.out.printf("Error file %s missing from disk\n", "_"+remotePath.replace('/', '_'));
+								e = new Envelope("ERROR_NOTONDISK");
+								send(e);
+							} else {
+								e = new Envelope("KEYNUM");
+								e.addObject(sf.getKey());
+								send(e);
+							}
+						} catch(IOException e1) {
+							System.err.println("Error: " + e.getMessage());
+							e1.printStackTrace(System.err);
+						}
+					}
+				} else if(e.getMessage().equals("DISCONNECT")) {
 					socket.close();
 					proceed = false;
 				}
@@ -278,7 +325,8 @@ public class FileThread extends Thread
 	{
 		final String message = e.getMessage();
 		if (message.equals("UPLOADF")   || message.equals("LFILES") ||
-			message.equals("DOWNLOADF") || message.equals("DELETEF")) {
+			message.equals("DOWNLOADF") || message.equals("DELETEF") ||
+            message.equals("KEYREQ")){
 			// token is the first object in all of these messages
 			if (e.getObjContents().size() == 0) {
 				return false;

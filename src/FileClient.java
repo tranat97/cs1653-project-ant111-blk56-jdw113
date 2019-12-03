@@ -7,6 +7,7 @@ import java.util.*;
 import java.security.PublicKey;
 import java.security.KeyFactory;
 import java.security.spec.*;
+import java.security.Key;
 
 public class FileClient extends Client implements FileClientInterface
 {
@@ -51,7 +52,7 @@ public class FileClient extends Client implements FileClientInterface
 		return true;
 	}
 
-	public boolean download(String sourceFile, String destFile, UserToken token)
+	public boolean download(String sourceFile, String destFile, UserToken token, Key key)
 	{
 		if (sourceFile.charAt(0)=='/') {
 			sourceFile = sourceFile.substring(1);
@@ -67,13 +68,35 @@ public class FileClient extends Client implements FileClientInterface
 				env.addObject(token);
 				env.addObject(sourceFile);
 				send(env);
-
+                        
+				env = receive();
+                byte[] iv = null;
+				if (env.getMessage().compareTo("IV")==0) {
+					iv = (byte[])env.getObjContents().get(0);
+                    //System.out.println("download IV = "+Arrays.toString(iv));
+					env = new Envelope("READY");
+					send(env);
+				} else {
+					return false;
+				}
+				
 				env = receive();
 
 				while (env.getMessage().compareTo("CHUNK")==0) {
-					fos.write((byte[])env.getObjContents().get(0), 0, (Integer)env.getObjContents().get(1));
+                    byte[] block = (byte[])env.getObjContents().get(0);
+                    //int n = (Integer)env.getObjContents().get(1);
+                    //System.out.println("\nbefore "+Arrays.toString(block));
+                    block = crypto.decrypt(block, iv, key);
+                    int n=0;
+                    for (byte b: block) {
+                        if (b == 0)
+                            break;
+                        n++;
+                    }
+                    //System.out.println("after "+Arrays.toString(block));
+					fos.write(block, 0, n);
 					System.out.printf(".");
-					env = new Envelope("DOWNLOADF"); //Success
+					env = new Envelope("READY"); //Success
 					send(env);
 					env = receive();
 				}
@@ -97,10 +120,40 @@ public class FileClient extends Client implements FileClientInterface
 			System.out.printf("Error couldn't create file %s\n", destFile);
 			return false;
 		} catch (Exception e1) {
-			e1.printStackTrace();
+			//e1.printStackTrace();
+            System.out.printf("Error: download/decryption failed\n");
 			return false;
 		}
 		return true;
+	}
+	
+	public Integer keyRequest(String sourceFile, UserToken token)
+	{
+		Integer keyNum = null;
+		Envelope env = null;
+		try {
+			env = new Envelope("KEYREQ");
+			env.addObject(token);
+			env.addObject(sourceFile);
+			send(env);
+			//Read response
+			env = receive();
+			if(env.getMessage().compareTo("KEYNUM")==0) {
+				if(env.getObjContents().get(0)!=null) {
+					keyNum = (Integer)env.getObjContents().get(0);
+				} else {
+					System.out.println("Key number not found");
+				}
+			} else {
+				System.out.println("ERROR: The file does not exist or you do not have access to the file: "+sourceFile);
+			}
+			
+		} catch(Exception el) {
+			System.out.println("Error sending/receiving request");
+			return null;
+		}
+		
+		return keyNum;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -126,7 +179,7 @@ public class FileClient extends Client implements FileClientInterface
 		return null;
 	}
 
-	public boolean upload(String sourceFile, String destFile, String group, UserToken token)
+	public boolean upload(String sourceFile, String destFile, String group, UserToken token, Key key, Integer keyNum)
 	{
 		if (!(new File(sourceFile).exists())) {
 			System.out.printf("Source file %s does not exist\n", sourceFile);
@@ -139,11 +192,15 @@ public class FileClient extends Client implements FileClientInterface
 
 		try {
 			Envelope message = null, env = null;
+			byte[] iv = crypto.generateRandomBytes(16);
+            //System.out.println("upload IV = "+Arrays.toString(iv));
 			//Tell the server to return the member list
 			message = new Envelope("UPLOADF");
 			message.addObject(token); //Add requester's token
 			message.addObject(destFile);
 			message.addObject(group);
+			message.addObject(keyNum);
+			message.addObject(iv);
 			send(message);
 
 			FileInputStream fis = new FileInputStream(sourceFile);
@@ -156,7 +213,6 @@ public class FileClient extends Client implements FileClientInterface
 				System.out.printf("Upload failed: %s\n", env.getMessage());
 				return false;
 			}
-
 			do {
 				byte[] buf = new byte[4096];
 				if (env.getMessage().compareTo("READY")!=0) {
@@ -171,9 +227,11 @@ public class FileClient extends Client implements FileClientInterface
 					System.out.println("Read error");
 					return false;
 				}
-
+                //System.out.println("before "+Arrays.toString(buf));
+                buf = crypto.encrypt(buf, iv, key);
+                //System.out.println("\nafter "+Arrays.toString(buf));
 				message.addObject(buf);
-				message.addObject(new Integer(n));
+				message.addObject(new Integer(buf.length));
 				send(message);
 				env = receive();
 			} while (fis.available()>0);
@@ -181,6 +239,7 @@ public class FileClient extends Client implements FileClientInterface
 			//If server indicates success, return the member list
 			if(env.getMessage().compareTo("READY")==0) {
 				message = new Envelope("EOF");
+				message.addObject(iv);
 				send(message);
 				env = receive();
 				if(env.getMessage().compareTo("OK")==0) {
