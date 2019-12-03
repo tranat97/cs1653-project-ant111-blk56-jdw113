@@ -325,7 +325,8 @@ public class FileThread extends Thread
 	{
 		final String message = e.getMessage();
 		if (message.equals("UPLOADF")   || message.equals("LFILES") ||
-			message.equals("DOWNLOADF") || message.equals("DELETEF")) {
+			message.equals("DOWNLOADF") || message.equals("DELETEF") ||
+            message.equals("KEYREQ")){
 			// token is the first object in all of these messages
 			if (e.getObjContents().size() == 0) {
 				return false;
