@@ -11,6 +11,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.IOException;
 import java.security.Key;
+import java.security.PublicKey;
 import java.util.Arrays;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -332,7 +333,7 @@ public class FileThread extends Thread
 				return false;
 			}
 			UserToken t = (UserToken) e.getObjContents().get(0);
-			return t != null && crypto.verify(my_fs.trustedGroupServer, t);
+			return t != null && crypto.verify(my_fs.trustedGroupServer, t) && checkFingerprint(t) && checkTimestamp(t);
 		}
 		// no token in message, so token is valid
 		return true;
@@ -352,5 +353,28 @@ public class FileThread extends Thread
 	private void send(Envelope e) throws Exception
 	{
 		output.writeObject(crypto.encrypt(e, messageNumber++, AESKey, HMACKey));
+	}
+
+	private boolean checkFingerprint(UserToken myToken)
+	{
+		PublicKey fsPubKey = my_fs.RSAKeys.getPublic();
+		String fsFingerprint = crypto.fingerprint(fsPubKey);
+		if(fsFingerprint.equals(myToken.getTarget())) {
+			return true;
+		} else {
+			return false;
+		}
+
+	}
+	private boolean checkTimestamp(UserToken myToken)
+	{
+		long unixTime = System.currentTimeMillis();
+		long tokenTimestamp = myToken.getTimestamp();
+		if(unixTime - tokenTimestamp <= 3600000) {       //check to see if timestamp older than 1 hour
+			return true;
+		} else {
+			return false;
+		}
+
 	}
 }

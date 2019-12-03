@@ -50,4 +50,6 @@ public interface UserToken
 
 	public void setSignature(byte[] signature);
 	public byte[] getSignature();
+    public String getTarget();
+    public long getTimestamp();
 }   //-- end interface UserToken
